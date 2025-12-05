@@ -1,0 +1,31 @@
+{
+    "name": "elvox-server",
+    "version": "1.0.0",
+    "main": "server.js",
+    "type": "module",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "start": "nodemon src/server.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/ElvoxApp/elvox-server.git"
+    },
+    "author": "",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/ElvoxApp/elvox-server/issues"
+    },
+    "homepage": "https://github.com/ElvoxApp/elvox-server#readme",
+    "description": "",
+    "dependencies": {
+        "bcrypt": "^6.0.0",
+        "cookie-parser": "^1.4.7",
+        "cors": "^2.8.5",
+        "dotenv": "^17.2.3",
+        "express": "^5.2.1",
+        "jsonwebtoken": "^9.0.3",
+        "knex": "^3.1.0",
+        "pg": "^8.16.3"
+    }
+}
