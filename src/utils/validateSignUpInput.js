@@ -13,7 +13,7 @@ const validateSignUpInput = (data) => {
 
     try {
         payload = jwt.verify(signupToken, process.env.SIGNUP_SECRET)
-    } catch {
+    } catch (_) {
         throw new CustomError("Invalid or expired signup token", 401)
     }
 
