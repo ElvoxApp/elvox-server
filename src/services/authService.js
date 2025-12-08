@@ -1,4 +1,3 @@
-import nodemailer from "nodemailer"
 import bcrypt from "bcrypt"
 import jwt from "jsonwebtoken"
 import CustomError from "../utils/CustomError.js"
@@ -54,22 +53,28 @@ export const getOtp = async (data) => {
 
         otps.set(data[data.otpMethod], { otp, expiresAt })
 
-        const transporter = nodemailer.createTransport({
-            host: "smtp.gmail.com",
-            port: 465,
-            secure: true,
-            auth: {
-                user: process.env.EMAIL,
-                pass: process.env.EMAIL_PASS
-            }
+        const emailData = {
+            sender: {
+                email: process.env.BREVO_SENDER_EMAIL,
+                name: process.env.BREVO_SENDER_NAME
+            },
+            to: [{ email: data.email }],
+            subject: "Your OTP for Elvox",
+            textContent: `Your OTP for Elvox is ${otp}. It expires in 5 minutes.`
+        }
+
+        const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "api-key": process.env.BREVO_API_KEY
+            },
+            body: JSON.stringify(emailData)
         })
 
-        await transporter.sendMail({
-            from: process.env.EMAIL,
-            to: data.email,
-            subject: "Your OTP for Elvox",
-            text: `Your OTP for Elvox is ${otp}. It expires in 5 minutes.`
-        })
+        if (!res.ok) {
+            throw new CustomError("Failed to send OTP email", 500)
+        }
 
         return { message: "OTP send" }
     } else if (type === "phone") {
