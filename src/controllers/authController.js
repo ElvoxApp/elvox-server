@@ -63,14 +63,6 @@ export const logout = (req, res) => {
     res.status(200).json({ message: "Logged out" })
 }
 
-export const verifyMe = async (req, res, next) => {
-    if (!req.cookies.token)
-        return res.status(401).json({ message: "Not logged in" })
-
-    try {
-        const { user } = await authService.verifyMe(req.cookies.token)
-        res.status(200).json(user)
-    } catch (err) {
-        next(err)
-    }
+export const verifyMe = (req, res) => {
+    res.status(200).json(req.user)
 }

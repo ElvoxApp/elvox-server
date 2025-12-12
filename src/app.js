@@ -2,14 +2,17 @@ import express from "express"
 import "dotenv/config"
 import cors from "cors"
 import cookieParser from "cookie-parser"
+import pool from "./db/db.js"
 import errorHandler from "./middleware/errorHandler.js"
 import notFound from "./middleware/notFound.js"
-import pool from "./db/db.js"
+import auth from "./middleware/auth.js"
+import requireRole from "./middleware/requireRole.js"
 
 import authRouter from "./routes/authRoute.js"
 import studentRouter from "./routes/studentRoute.js"
 import teacherRouter from "./routes/teacherRoute.js"
 import userRouter from "./routes/userRoute.js"
+import departmentsRouter from "./routes/departmentRoute.js"
 
 const app = express()
 
@@ -50,6 +53,7 @@ app.use("/auth", authRouter)
 app.use("/students", studentRouter)
 app.use("/teachers", teacherRouter)
 app.use("/users", userRouter)
+app.use("/departments", auth, departmentsRouter)
 
 app.use(notFound)
 app.use(errorHandler)

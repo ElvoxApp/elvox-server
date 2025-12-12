@@ -219,23 +219,3 @@ export const login = async (data) => {
         token
     }
 }
-
-export const verifyMe = async (token) => {
-    let payload
-
-    try {
-        payload = jwt.verify(token, process.env.JWT_SECRET)
-    } catch (err) {
-        throw new CustomError("Invalid or expired token", 401)
-    }
-
-    const res = await pool.query("SELECT * FROM users WHERE id=$1", [
-        payload.id
-    ])
-
-    if (res.rowCount === 0) throw new CustomError("User not found", 404)
-
-    const { password_hash, created_at, ...user } = res.rows[0]
-
-    return { user }
-}
