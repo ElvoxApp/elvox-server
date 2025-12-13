@@ -123,7 +123,7 @@ export const signup = async (data) => {
     }
 
     if (role.toLowerCase() === "teacher") {
-        person = await getTeacher(admno)
+        person = await getTeacher(empcode)
     }
 
     const {
@@ -190,9 +190,6 @@ export const login = async (data) => {
     const { eop, password } = data
 
     if (!eop) throw new CustomError("Email or phone required", 400)
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    const phoneRegex = /^(\+91)?[0-9]{10}$/
 
     const type = detectInput(eop)
 
