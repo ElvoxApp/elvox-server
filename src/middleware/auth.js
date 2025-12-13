@@ -14,16 +14,26 @@ const authMiddleware = async (req, res, next) => {
         } catch (err) {
             throw new CustomError("Invalid or expired token", 401)
         }
+        const view =
+            payload.role.toLowerCase() === "student"
+                ? "student_user_view"
+                : "teacher_user_view"
 
-        const result = await pool.query("SELECT * FROM users WHERE id=$1", [
-            payload.id
-        ])
+        const result = await pool.query(
+            `SELECT * FROM ${view} WHERE user_id = $1`,
+            [payload.id]
+        )
 
         if (result.rowCount === 0) throw new CustomError("User not found", 401)
 
-        const { password_hash, created_at, ...user } = result.rows[0]
+        const {
+            password_hash,
+            created_at,
+            user_id: id,
+            ...user
+        } = result.rows[0]
 
-        req.user = user
+        req.user = { id, ...user }
         req.auth = payload
         next()
     } catch (err) {

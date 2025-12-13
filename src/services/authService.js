@@ -120,32 +120,20 @@ export const signup = async (data) => {
 
     if (role.toLowerCase() === "student") {
         person = await getStudent(admno)
-    }
-
-    if (role.toLowerCase() === "teacher") {
+    } else if (role.toLowerCase() === "teacher") {
         person = await getTeacher(empcode)
     }
 
-    const {
-        name,
-        department,
-        class: studentClass,
-        semester,
-        batch,
-        profile_pic,
-        phone,
-        gender
-    } = person
+    const { name, profile_pic, phone, user_id } = person
 
     if (!person.email || !person.phone)
         throw new CustomError("No email or phone for this record", 400)
 
     const email = person.email.trim().toLowerCase()
 
-    const existing = await pool.query(
-        "SELECT * FROM users WHERE email=$1 OR admno=$2 OR empcode=$3",
-        [email, admno || null, empcode || null]
-    )
+    const existing = await pool.query("SELECT * FROM users WHERE id = $1", [
+        user_id
+    ])
 
     if (existing.rowCount > 0)
         throw new CustomError("An account already exists for this user", 409)
@@ -153,37 +141,59 @@ export const signup = async (data) => {
     const passwordHash = await bcrypt.hash(password, 10)
 
     const insertResult = await pool.query(
-        "INSERT INTO users (email, password_hash, role, admno, empcode, name, department, class, semester, batch, profile_pic, phone, gender) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING id, email, role, admno, empcode, name, department, class, semester, batch, profile_pic, phone, gender",
-        [
-            email,
-            passwordHash,
-            role,
-            admno,
-            empcode,
-            name,
-            department,
-            studentClass,
-            semester,
-            batch,
-            profile_pic,
-            phone,
-            gender
-        ]
+        "INSERT INTO users (email, password_hash, role, name, profile_pic, phone) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, role",
+        [email, passwordHash, role, name, profile_pic, phone]
     )
 
-    const user = insertResult.rows[0]
+    if (insertResult.rows[0].role.toLowerCase() === "student") {
+        await pool.query("UPDATE students SET user_id = $1 WHERE admno = $2", [
+            insertResult.rows[0].id,
+            person.admno
+        ])
+    } else if (insertResult.rows[0].role.toLowerCase() === "teacher") {
+        await pool.query(
+            "UPDATE teachers SET user_id = $1 WHERE empcode = $2",
+            [insertResult.rows[0].id, person.empcode]
+        )
+    }
 
     if (!process.env.JWT_SECRET) {
         throw new Error("JWT_SECRET is not set in environment")
     }
 
+    let userDeatils
+
+    if (insertResult.rows[0].role.toLowerCase() === "student") {
+        const res = await pool.query(
+            "SELECT * FROM student_user_view WHERE user_id = $1",
+            [insertResult.rows[0].id]
+        )
+
+        if (res.rowCount === 0) throw new CustomError("User not found", 404)
+
+        userDeatils = res.rows[0]
+    } else if (insertResult.rows[0].role.toLowerCase() === "teacher") {
+        const res = await pool.query(
+            "SELECT * FROM teacher_user_view WHERE user_id = $1",
+            [insertResult.rows[0].id]
+        )
+
+        if (res.rowCount === 0) throw new CustomError("User not found", 404)
+
+        userDeatils = res.rows[0]
+    }
+
     const token = jwt.sign(
-        { id: user.id, role: user.role },
+        { id: userDeatils.user_id, role: userDeatils.role },
         process.env.JWT_SECRET,
-        { expiresIn: "7d" }
+        {
+            expiresIn: "7d"
+        }
     )
 
-    return { user, token }
+    const { user_id: id, ...rest } = userDeatils
+
+    return { user: { id, ...rest }, token }
 }
 
 export const login = async (data) => {
@@ -205,14 +215,37 @@ export const login = async (data) => {
 
     if (!isMatch) throw new CustomError("Invalid credentials", 401)
 
+    let userDeatils
+
+    if (user.role.toLowerCase() === "student") {
+        const result = await pool.query(
+            "SELECT * FROM student_user_view WHERE user_id = $1",
+            [user.id]
+        )
+
+        if (result.rowCount === 0) throw new CustomError("User not found", 404)
+
+        userDeatils = result.rows[0]
+    } else if (user.role.toLowerCase() === "teacher") {
+        const result = await pool.query(
+            "SELECT * FROM teacher_user_view WHERE user_id = $1",
+            [user.id]
+        )
+
+        if (result.rowCount === 0) throw new CustomError("User not found", 404)
+
+        userDeatils = result.rows[0]
+    }
+
     const token = jwt.sign(
-        { id: user.id, role: user.role },
+        { id: userDeatils.user_id, role: userDeatils.role },
         process.env.JWT_SECRET,
-        { expiresIn: "7d" }
+        {
+            expiresIn: "7d"
+        }
     )
 
-    return {
-        user,
-        token
-    }
+    const { user_id: id, ...rest } = userDeatils
+
+    return { user: { id, ...rest }, token }
 }
