@@ -15,12 +15,12 @@ export const checkUserExists = async (data) => {
 
     if (role.toLowerCase() === "student") {
         res = await pool.query(
-            "SELECT * FROM student_user_view WHERE admno = $1",
+            "SELECT 1 FROM student_user_view WHERE admno = $1 LIMIT 1",
             [id]
         )
     } else if (role.toLowerCase() === "teacher") {
         res = await pool.query(
-            "SELECT * FROM teacher_user_view WHERE empcode = $1",
+            "SELECT 1 FROM teacher_user_view WHERE empcode = $1 LIMIT 1",
             [id]
         )
     } else {

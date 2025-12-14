@@ -10,44 +10,72 @@ import { getStudent } from "./studentService.js"
 import { getTeacher } from "./teacherService.js"
 
 export const getOtp = async (data) => {
+    if (!data.purpose) throw new CustomError("Purpose is required")
     if (!data.otpMethod) throw new CustomError("OTP method required", 400)
     if (!data[data.otpMethod])
-        throw new CustomError(`${capitalize(data.otpMethod)} needed`)
+        throw new CustomError(`${capitalize(data.otpMethod)} required`)
 
     const type = detectInput(data[data.otpMethod])
 
-    if (type === "email") {
-        const otp = Math.floor(100000 + Math.random() * 900000).toString()
-        const expiresAt = Date.now() + 5 * 60 * 1000 // 5 minutes
+    let exists
 
-        otps.set(data[data.otpMethod], { otp, expiresAt })
+    if (data.purpose === "signup") {
+        const [student, teacher] = await Promise.all([
+            pool.query(`SELECT 1 FROM students WHERE ${type} = $1 LIMIT 1`, [
+                data[data.otpMethod]
+            ]),
+            pool.query(`SELECT 1 FROM teachers WHERE ${type} = $1 LIMIT 1`, [
+                data[data.otpMethod]
+            ])
+        ])
 
-        const emailData = {
-            sender: {
-                email: process.env.BREVO_SENDER_EMAIL,
-                name: process.env.BREVO_SENDER_NAME
-            },
-            to: [{ email: data.email }],
-            subject: "Your OTP for Elvox",
-            textContent: `Your OTP for Elvox is ${otp}. It expires in 5 minutes.`
-        }
+        exists = student.rowCount > 0 || teacher.rowCount > 0
+    } else if (data.purpose === "forgot") {
+        const user = await pool.query(
+            `SELECT 1 FROM users WHERE ${type} = $1 LIMIT 1`,
+            [data[data.otpMethod]]
+        )
 
-        const res = await fetch("https://api.brevo.com/v3/smtp/email", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "api-key": process.env.BREVO_API_KEY
-            },
-            body: JSON.stringify(emailData)
-        })
-
-        if (!res.ok) {
-            throw new CustomError("Failed to send OTP email", 500)
-        }
-
-        return { message: "OTP send" }
-    } else if (type === "phone") {
+        exists = user.rowCount > 0
+    } else {
+        throw new CustomError("Invalid purpose", 400)
     }
+
+    console.log(exists)
+
+    if (exists) {
+        if (type === "email") {
+            const otp = Math.floor(100000 + Math.random() * 900000).toString()
+            const expiresAt = Date.now() + 5 * 60 * 1000 // 5 minutes
+
+            otps.set(data[data.otpMethod], { otp, expiresAt })
+
+            const emailData = {
+                sender: {
+                    email: process.env.BREVO_SENDER_EMAIL,
+                    name: process.env.BREVO_SENDER_NAME
+                },
+                to: [{ email: data.email }],
+                subject: "Your OTP for Elvox",
+                textContent: `Your OTP for Elvox is ${otp}. It expires in 5 minutes.`
+            }
+
+            const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "api-key": process.env.BREVO_API_KEY
+                },
+                body: JSON.stringify(emailData)
+            })
+
+            if (!res.ok) {
+                throw new CustomError("Failed to send OTP email", 500)
+            }
+        } else if (type === "phone") {
+        }
+    }
+    return { message: "OTP send" }
 }
 
 export const verifyOtp = async (data) => {
