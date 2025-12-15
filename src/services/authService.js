@@ -5,40 +5,59 @@ import detectInput from "../utils/detectEmailOrPhone.js"
 import pool from "../db/db.js"
 import otps from "../utils/otpStore.js"
 import capitalize from "../utils/capitalize.js"
-import validateSignUpInput from "../utils/validateSignUpInput.js"
 import { getStudent } from "./studentService.js"
 import { getTeacher } from "./teacherService.js"
+import validateSignUpInput from "../utils/validateSignUpInput.js"
+import maskContact from "../utils/mastContact.js"
 
 export const getOtp = async (data) => {
     if (!data.purpose) throw new CustomError("Purpose is required")
     if (!data.otpMethod) throw new CustomError("OTP method required", 400)
     if (data.otpMethod !== "email" && data.otpMethod !== "phone")
         throw new CustomError("Invalid otp method", 400)
-    if (!data[data.otpMethod])
-        throw new CustomError(`${capitalize(data.otpMethod)} required`)
 
     const type = data.otpMethod === "email" ? "email" : "phone"
 
-    let exists
+    let contactInfo, exists
 
     if (data.purpose === "signup") {
-        const [student, teacher] = await Promise.all([
-            pool.query(`SELECT 1 FROM students WHERE ${type} = $1 LIMIT 1`, [
-                data[data.otpMethod]
-            ]),
-            pool.query(`SELECT 1 FROM teachers WHERE ${type} = $1 LIMIT 1`, [
-                data[data.otpMethod]
-            ])
-        ])
+        if (!data.role) throw new CustomError("Role is required")
+        if (data.role !== "student" && data.role !== "teacher")
+            throw new CustomError("Invalid role")
 
-        exists = student.rowCount > 0 || teacher.rowCount > 0
+        let res
+
+        if (data.role === "student") {
+            if (!data.admno)
+                throw new CustomError("Admission number is required")
+            res = await pool.query(
+                `SELECT ${type} FROM students WHERE admno = $1`,
+                [data.admno]
+            )
+        }
+
+        if (data.role === "teacher") {
+            if (!data.empcode)
+                throw new CustomError("Employee code is required")
+            res = await pool.query(
+                `SELECT ${type} FROM teachers WHERE empcode = $1`,
+                [data.empcode]
+            )
+        }
+
+        exists = res.rowCount > 0 || res.rowCount > 0
+        contactInfo = res.rows[0][type]
     } else if (data.purpose === "forgot") {
+        if (!data[type])
+            throw new CustomError(`${capitalize(data.otpMethod)} required`)
+
         const user = await pool.query(
             `SELECT 1 FROM users WHERE ${type} = $1 LIMIT 1`,
             [data[data.otpMethod]]
         )
 
         exists = user.rowCount > 0
+        contactInfo = type === "email" ? data.email : data.phone
     } else {
         throw new CustomError("Invalid purpose", 400)
     }
@@ -55,7 +74,7 @@ export const getOtp = async (data) => {
                     email: process.env.BREVO_SENDER_EMAIL,
                     name: process.env.BREVO_SENDER_NAME
                 },
-                to: [{ email: data.email }],
+                to: [{ email: contactInfo }],
                 subject: "Your OTP for Elvox",
                 textContent: `Your OTP for Elvox is ${otp}. It expires in 5 minutes.`
             }
@@ -75,11 +94,12 @@ export const getOtp = async (data) => {
         } else if (type === "phone") {
         }
     }
-    return { message: "OTP send" }
+
+    return { message: "OTP sent", contact: maskContact(contactInfo, type) }
 }
 
 export const verifyOtpSignup = async (data) => {
-    const { role, admno, empcode, otpMethod, otp, email, phone } = data
+    const { role, admno, empcode, otpMethod, otp } = data
 
     if (!otpMethod) throw new CustomError("OTP method required", 400)
 
@@ -88,29 +108,7 @@ export const verifyOtpSignup = async (data) => {
 
     if (!otp) throw new CustomError("OTP required", 400)
 
-    if (otpMethod === "phone" && !phone)
-        throw new CustomError("Phone is required", 400)
-
-    if (otpMethod === "email" && !email)
-        throw new CustomError("Email is required", 400)
-
     if (!role) throw new CustomError("Role is required", 400)
-
-    let person
-
-    if (role.toLowerCase() === "student") {
-        if (!admno) throw new CustomError("Admission number is required", 400)
-
-        person = await getStudent(admno)
-    }
-
-    if (role.toLowerCase() === "teacher") {
-        if (!empcode) throw new CustomError("Employee code is required", 400)
-
-        person = await getTeacher(empcode)
-    }
-
-    if (person.email !== email) throw new CustomError("Invalid user details")
 
     // ONLY FOR TESTING ONLY, MUST REMOVE IN PROD
     if (data.otp === "123456") {

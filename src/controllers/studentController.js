@@ -9,3 +9,13 @@ export const getStudent = async (req, res, next) => {
         next(err)
     }
 }
+
+export const checkStudentExists = async (req, res, next) => {
+    try {
+        const data = await studentService.checkStudentExists(req.params)
+
+        res.status(200).json(data)
+    } catch (err) {
+        next(err)
+    }
+}

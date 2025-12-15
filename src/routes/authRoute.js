@@ -16,9 +16,11 @@ const router = Router()
 router.post("/otp", getOtp)
 router.post("/otp/verify/signup", verifyOtpSignup)
 router.post("/otp/verify/forgot-password", verifyOtpForgotPassword)
+
 router.post("/signup", signup)
 router.post("/login", login)
 router.post("/logout", logout)
+
 router.patch("/change-password", changePassword)
 router.get("/me", auth, verifyMe)
 

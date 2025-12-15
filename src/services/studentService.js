@@ -12,3 +12,18 @@ export const getStudent = async (admno) => {
 
     return res.rows[0]
 }
+
+export const checkStudentExists = async (data) => {
+    const { admno } = data
+
+    if (!admno) throw new CustomError("Admission number is required", 400)
+
+    const res = await pool.query(
+        "SELECT 1 FROM students WHERE admno = $1 LIMIT 1",
+        [admno]
+    )
+
+    if (res.rowCount === 0) return { exists: false }
+
+    return { exists: true }
+}

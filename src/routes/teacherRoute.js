@@ -1,8 +1,12 @@
 import { Router } from "express"
-import { getTeacher } from "../controllers/teacherController.js"
+import {
+    checkTeacherExists,
+    getTeacher
+} from "../controllers/teacherController.js"
 
 const router = Router()
 
+router.get("/exists/:empcode", checkTeacherExists)
 router.get("/:empcode", getTeacher)
 
 export default router

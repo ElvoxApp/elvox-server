@@ -9,11 +9,13 @@ const authMiddleware = async (req, res, next) => {
         if (!token) throw new CustomError("Authentication required", 401)
 
         let payload
+
         try {
             payload = jwt.verify(token, process.env.JWT_SECRET)
         } catch (err) {
             throw new CustomError("Invalid or expired token", 401)
         }
+
         const view =
             payload.role.toLowerCase() === "student"
                 ? "student_user_view"
@@ -26,12 +28,7 @@ const authMiddleware = async (req, res, next) => {
 
         if (result.rowCount === 0) throw new CustomError("User not found", 401)
 
-        const {
-            password_hash,
-            created_at,
-            user_id: id,
-            ...user
-        } = result.rows[0]
+        const { user_id: id, ...user } = result.rows[0]
 
         req.user = { id, ...user }
         req.auth = payload
