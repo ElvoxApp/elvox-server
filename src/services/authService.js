@@ -318,7 +318,11 @@ export const login = async (data) => {
         if (result.rowCount === 0) throw new CustomError("User not found", 404)
 
         userDeatils = result.rows[0]
-    } else if (user.role.toLowerCase() === "teacher") {
+    } else if (
+        user.role.toLowerCase() === "admin" ||
+        user.role.toLowerCase() === "teacher" ||
+        user.role.toLowerCase() === "supervisor"
+    ) {
         const result = await pool.query(
             "SELECT * FROM teacher_user_view WHERE user_id = $1",
             [user.id]
