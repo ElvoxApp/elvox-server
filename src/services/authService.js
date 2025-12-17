@@ -331,6 +331,8 @@ export const login = async (data) => {
         if (result.rowCount === 0) throw new CustomError("User not found", 404)
 
         userDeatils = result.rows[0]
+    } else {
+        throw new CustomError("Invalid role", 400)
     }
 
     const token = jwt.sign(
