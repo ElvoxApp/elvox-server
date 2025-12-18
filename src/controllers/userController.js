@@ -9,3 +9,16 @@ export const checkUserExists = async (req, res, next) => {
         next(err)
     }
 }
+
+export const updatePassword = async (req, res, next) => {
+    try {
+        const data = await userService.updatePassword({
+            ...req.body,
+            id: req.user.id
+        })
+
+        res.status(200).json(data)
+    } catch (err) {
+        next(err)
+    }
+}

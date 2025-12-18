@@ -6,7 +6,7 @@ import {
     signup,
     login,
     logout,
-    changePassword,
+    resetPassword,
     verifyMe
 } from "../controllers/authController.js"
 import auth from "../middleware/auth.js"
@@ -21,7 +21,7 @@ router.post("/signup", signup)
 router.post("/login", login)
 router.post("/logout", logout)
 
-router.patch("/change-password", changePassword)
+router.patch("/reset-password", resetPassword)
 router.get("/me", auth, verifyMe)
 
 export default router

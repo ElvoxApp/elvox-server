@@ -11,7 +11,7 @@ import validateSignUpInput from "../utils/validateSignUpInput.js"
 import maskContact from "../utils/mastContact.js"
 
 export const getOtp = async (data) => {
-    if (!data.purpose) throw new CustomError("Purpose is required")
+    if (!data.purpose) throw new CustomError("Purpose is required", 400)
     if (!data.otpMethod) throw new CustomError("OTP method required", 400)
     if (data.otpMethod !== "email" && data.otpMethod !== "phone")
         throw new CustomError("Invalid otp method", 400)
@@ -21,15 +21,15 @@ export const getOtp = async (data) => {
     let contactInfo, exists
 
     if (data.purpose === "signup") {
-        if (!data.role) throw new CustomError("Role is required")
+        if (!data.role) throw new CustomError("Role is required", 400)
         if (data.role !== "student" && data.role !== "teacher")
-            throw new CustomError("Invalid role")
+            throw new CustomError("Invalid role", 400)
 
         let res
 
         if (data.role === "student") {
             if (!data.admno)
-                throw new CustomError("Admission number is required")
+                throw new CustomError("Admission number is required", 400)
             res = await pool.query(
                 `SELECT ${type} FROM students WHERE admno = $1`,
                 [data.admno]
@@ -38,7 +38,7 @@ export const getOtp = async (data) => {
 
         if (data.role === "teacher") {
             if (!data.empcode)
-                throw new CustomError("Employee code is required")
+                throw new CustomError("Employee code is required", 400)
             res = await pool.query(
                 `SELECT ${type} FROM teachers WHERE empcode = $1`,
                 [data.empcode]
@@ -49,7 +49,7 @@ export const getOtp = async (data) => {
         contactInfo = res.rows[0][type]
     } else if (data.purpose === "forgot") {
         if (!data[type])
-            throw new CustomError(`${capitalize(data.otpMethod)} required`)
+            throw new CustomError(`${capitalize(data.otpMethod)} required`, 400)
 
         const user = await pool.query(
             `SELECT 1 FROM users WHERE ${type} = $1 LIMIT 1`,
@@ -348,14 +348,14 @@ export const login = async (data) => {
     return { user: { id, ...rest }, token }
 }
 
-export const changePassword = async (data) => {
+export const resetPassword = async (data) => {
     const { newPassword, confirmNewPassword, passwordResetToken } = data
 
     const passwordRegex =
         /^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*\-]).{8,}$/
 
     if (!passwordResetToken)
-        throw new CustomError("Password reset token is required")
+        throw new CustomError("Password reset token is required", 401)
 
     if (!newPassword || !confirmNewPassword)
         throw new CustomError(
@@ -395,5 +395,5 @@ export const changePassword = async (data) => {
 
     if (res.rowCount === 0) throw new CustomError("User not found", 404)
 
-    return { message: "Password changed successfully" }
+    return { message: "Password reset successfully" }
 }
