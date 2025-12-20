@@ -13,6 +13,7 @@ import studentRouter from "./routes/studentRoute.js"
 import teacherRouter from "./routes/teacherRoute.js"
 import userRouter from "./routes/userRoute.js"
 import classRouter from "./routes/classRoute.js"
+import electionRouter from "./routes/electionRoute.js"
 
 const app = express()
 
@@ -54,6 +55,7 @@ app.use("/students", studentRouter)
 app.use("/teachers", teacherRouter)
 app.use("/users", userRouter)
 app.use("/classes", auth, classRouter)
+app.use("/elections", auth, electionRouter)
 
 app.use(notFound)
 app.use(errorHandler)
