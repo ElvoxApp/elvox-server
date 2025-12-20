@@ -8,7 +8,7 @@ import capitalize from "../utils/capitalize.js"
 import { getStudent } from "./studentService.js"
 import { getTeacher } from "./teacherService.js"
 import validateSignUpInput from "../utils/validateSignUpInput.js"
-import maskContact from "../utils/mastContact.js"
+import maskContact from "../utils/maskContact.js"
 
 export const getOtp = async (data) => {
     if (!data.purpose) throw new CustomError("Purpose is required", 400)
