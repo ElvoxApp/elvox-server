@@ -1,8 +1,8 @@
 import * as candidateService from "../services/candidateService.js"
 
-export const addCandidate = async (req, res, next) => {
+export const createCandidate = async (req, res, next) => {
     try {
-        const data = await candidateService.addCandidate({
+        const data = await candidateService.createCandidate({
             user: req.user,
             body: req.body,
             files: req.files

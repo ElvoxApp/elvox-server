@@ -1,6 +1,6 @@
 import { Router } from "express"
 import requireRole from "../middleware/requireRole.js"
-import { addCandidate } from "../controllers/candidateController.js"
+import { createCandidate } from "../controllers/candidateController.js"
 import upload from "../middleware/upload.js"
 
 const router = Router()
@@ -13,7 +13,7 @@ router.post(
         { name: "nominee1Proof", maxCount: 1 },
         { name: "nominee2Proof", maxCount: 1 }
     ]),
-    addCandidate
+    createCandidate
 )
 
 export default router

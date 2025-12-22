@@ -4,7 +4,7 @@ import { uploadFile, deleteFile, getURL } from "../utils/file.js"
 import { getElection } from "./electionService.js"
 import { getStudent } from "./studentService.js"
 
-export const addCandidate = async (data) => {
+export const createCandidate = async (data) => {
     if (!data?.body?.election_id)
         throw new CustomError("Election id is required")
     if (!data?.body?.position) throw new CustomError("Position is required")
