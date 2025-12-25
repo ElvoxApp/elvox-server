@@ -42,6 +42,7 @@ app.get("/healthz", async (req, res) => {
         })
     } catch (err) {
         console.error("Health check failed:", err.message)
+        console.log(err)
 
         res.status(500).json({
             ok: false,

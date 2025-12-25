@@ -92,11 +92,6 @@ export const createCandidate = async (data) => {
             ]
         )
 
-        await client.query(
-            "UPDATE elections SET total_candidates = total_candidates + 1 WHERE id = $1",
-            [election.id]
-        )
-
         await client.query("COMMIT")
 
         if (res.rowCount === 0)
@@ -120,7 +115,7 @@ export const getMyCandidate = async (userId) => {
     if (!userId) throw new CustomError("User id is required", 400)
 
     const res = await pool.query(
-        "SELECT * FROM candidates WHERE user_id = $1",
+        "SELECT actioned_by, class, class_id, created_at, department, department_id, election_id, id, name, nominee1_admno, nominee1_name, nominee2_admno, nominee2_name, position, profile_pic, rejection_reason, semester, status, updated_at, user_id FROM candidates WHERE user_id = $1 AND status != 'withdrawn'",
         [userId]
     )
 
@@ -128,6 +123,19 @@ export const getMyCandidate = async (userId) => {
         throw new CustomError("No candidate application found", 404)
 
     return res.rows[0]
+}
+
+export const checkCandidateExists = async (userId) => {
+    if (!userId) throw new CustomError("User id is required", 400)
+
+    const res = await pool.query(
+        "SELECT status FROM candidates WHERE user_id = $1",
+        [userId]
+    )
+
+    if (res.rowCount === 0) return { exists: false }
+
+    return { exists: true, status: res.rows[0].status }
 }
 
 export const getCandidate = async (data) => {
@@ -185,4 +193,29 @@ export const getCandidates = async (data) => {
     }
 
     return candidates
+}
+
+export const withdrawCandidate = async (data) => {
+    const { id, election_id } = data
+
+    if (!id) throw new CustomError("Candidate id is required", 400)
+    if (!election_id) throw new CustomError("Election id is required", 400)
+
+    const election = await getElection(election_id)
+
+    if (Date.now > new Date(election.nomination_end))
+        throw new CustomError(
+            "Cannot withdraw after nomination period ends",
+            403
+        )
+
+    const res = await pool.query(
+        "UPDATE candidates SET status = 'withdrawn' WHERE id = $1",
+        [id]
+    )
+
+    if (res.rowCount === 0)
+        throw new CustomError("No candidate application found", 404)
+
+    return { message: "Candidate application withdrawn successfully" }
 }

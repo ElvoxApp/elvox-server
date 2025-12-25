@@ -24,6 +24,16 @@ export const getMyCandidate = async (req, res, next) => {
     }
 }
 
+export const checkCandidateExists = async (req, res, next) => {
+    try {
+        const data = await candidateService.checkCandidateExists(req.params.id)
+
+        res.status(200).json(data)
+    } catch (err) {
+        next(err)
+    }
+}
+
 export const getCandidate = async (req, res, next) => {
     try {
         const data = await candidateService.getCandidate({
@@ -42,6 +52,19 @@ export const getCandidates = async (req, res, next) => {
         const data = await candidateService.getCandidates({
             query: req.query,
             user: req.user
+        })
+
+        res.status(200).json(data)
+    } catch (err) {
+        next(err)
+    }
+}
+
+export const withdrawCandidate = async (req, res, next) => {
+    try {
+        const data = await candidateService.withdrawCandidate({
+            id: req.params.id,
+            election_id: req.body.election_id
         })
 
         res.status(200).json(data)

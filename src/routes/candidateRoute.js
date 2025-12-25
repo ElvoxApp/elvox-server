@@ -1,10 +1,13 @@
 import { Router } from "express"
 import requireRole from "../middleware/requireRole.js"
+import requirePassword from "../middleware/requirePassword.js"
 import {
+    checkCandidateExists,
     createCandidate,
     getCandidate,
     getCandidates,
-    getMyCandidate
+    getMyCandidate,
+    withdrawCandidate
 } from "../controllers/candidateController.js"
 import upload from "../middleware/upload.js"
 
@@ -22,6 +25,13 @@ router.post(
 )
 router.get("/", getCandidates)
 router.get("/me", requireRole(["student"]), getMyCandidate)
+router.patch(
+    "/:id/withdraw",
+    requireRole(["student"]),
+    requirePassword,
+    withdrawCandidate
+)
+router.get("/exists/:id", checkCandidateExists)
 router.get(
     "/:id",
     requireRole(["teacher", "supervisor", "admin"]),
