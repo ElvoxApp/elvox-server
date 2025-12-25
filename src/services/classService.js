@@ -18,5 +18,5 @@ export const getClass = async (classId) => {
 
     if (res.rowCount === 0) throw new CustomError("No class found", 404)
 
-    return res.rows
+    return res.rows[0]
 }
