@@ -115,7 +115,7 @@ export const getMyCandidate = async (userId) => {
     if (!userId) throw new CustomError("User id is required", 400)
 
     const res = await pool.query(
-        "SELECT actioned_by, class, class_id, created_at, department, department_id, election_id, id, name, nominee1_admno, nominee1_name, nominee2_admno, nominee2_name, position, profile_pic, rejection_reason, semester, status, updated_at, user_id FROM candidates WHERE user_id = $1 AND status != 'withdrawn'",
+        "SELECT actioned_by, actioned_by_name, class, class_id, created_at, department, department_id, election_id, id, name, nominee1_admno, nominee1_name, nominee2_admno, nominee2_name, position, profile_pic, rejection_reason, semester, status, updated_at, user_id FROM candidates WHERE user_id = $1 AND status != 'withdrawn'",
         [userId]
     )
 
