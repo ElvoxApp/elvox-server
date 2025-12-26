@@ -4,7 +4,10 @@ import pool from "../db/db.js"
 
 const authMiddleware = async (req, res, next) => {
     try {
-        const token = req.cookies?.token
+        const authHeader = req.headers.authorization
+        const token =
+            req.cookies?.token ||
+            (authHeader?.startsWith("Bearer ") && authHeader.split(" ")[1])
 
         if (!token) throw new CustomError("Authentication required", 401)
 
