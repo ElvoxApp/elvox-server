@@ -1,8 +1,8 @@
 import crypto from "crypto"
 import { supabase } from "../config/supabase.js"
 
-export const uploadFile = async (file, folder, admno) => {
-    const path = `${folder}/${crypto.randomUUID()}-${admno}`
+export const uploadFile = async (file, folder, id) => {
+    const path = `${folder}/${crypto.randomUUID()}-${id}`
 
     const { data, error } = await supabase.storage
         .from("elvox-assets")
