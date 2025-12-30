@@ -9,7 +9,7 @@ export const getElections = async () => {
     if (res.rowCount === 0)
         throw new CustomError("No active election found", 404)
 
-    return res.rows
+    return res.rows[0]
 }
 
 export const getElection = async (id) => {
