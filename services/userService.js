@@ -84,3 +84,27 @@ export const updatePassword = async (data) => {
 
     return { message: "Password updated successfully" }
 }
+
+export const getUser = async (userId) => {
+    if (!userId) throw new CustomError("User id is required")
+
+    const userRes = await pool.query("SELECT role FROM users WHERE id = $1", [
+        userId
+    ])
+
+    if (userRes.rowCount === 0) throw new CustomError("User not found", 404)
+
+    const view =
+        userRes.rows[0].role.toLowerCase() === "student"
+            ? "student_user_view"
+            : "teacher_user_view"
+
+    const result = await pool.query(
+        `SELECT * FROM ${view} WHERE user_id = $1`,
+        [userId]
+    )
+
+    const { user_id: id, ...user } = result.rows[0]
+
+    return { id, ...user }
+}
