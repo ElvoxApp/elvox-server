@@ -10,7 +10,7 @@ export const createAppeal = async (data) => {
         subject,
         description
     } = data?.body
-    const { id: userId, name: userName } = data.user
+    const { id: userId, name: userName, role: userRole } = data.user
 
     if (!category) throw new CustomError("Appeal category is required", 400)
     if (!electionId) throw new CustomError("Election is required", 400)
@@ -32,8 +32,16 @@ export const createAppeal = async (data) => {
         await client.query("BEGIN")
 
         const res = await client.query(
-            "INSERT INTO appeals (user_id, submitted_by, election_id, category, subject, description) VALUES ($1, $2, $3, $4, $5) RETURNING  id, election_id, user_id, category, subject, description, status, created_at",
-            [userId, userName, electionId, category, subject, description]
+            "INSERT INTO appeals (user_id, submitted_by, submitted_by_role, election_id, category, subject, description) VALUES ($1, $2, $3, $4, $5) RETURNING  id, election_id, user_id, category, subject, description, status, created_at",
+            [
+                userId,
+                userName,
+                userRole,
+                electionId,
+                category,
+                subject,
+                description
+            ]
         )
 
         const appealId = res.rows[0].id
