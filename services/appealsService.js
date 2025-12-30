@@ -32,16 +32,8 @@ export const createAppeal = async (data) => {
         await client.query("BEGIN")
 
         const res = await client.query(
-            "INSERT INTO appeals (user_id, submitted_by, submitted_by_role, election_id, category, subject, description) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING  id, election_id, user_id, category, subject, description, status, created_at",
-            [
-                userId,
-                userName,
-                userRole,
-                electionId,
-                category,
-                subject,
-                description
-            ]
+            "INSERT INTO appeals (user_id, election_id, category, subject, description) VALUES ($1, $2, $3, $4, $5) RETURNING  id, election_id, user_id, category, subject, description, status, created_at",
+            [userId, electionId, category, subject, description]
         )
 
         const appealId = res.rows[0].id
@@ -74,25 +66,37 @@ export const getAppeals = async (data) => {
 
     if (!electionId) throw new CustomError("Election id is required", 400)
 
-    let appeals
+    const baseQuery = `
+        SELECT
+            a.*,
+            u.role AS user_role,
+            u.name AS user_name,
+            suv.admno,
+            tuv.empcode
+        FROM appeals a
+        JOIN users u ON u.id = a.user_id
+        LEFT JOIN student_user_view suv ON suv.user_id = a.user_id
+        LEFT JOIN teacher_user_view tuv ON tuv.user_id = a.user_id
+        WHERE a.election_id = $1
+    `
 
-    if (role === "admin") {
-        const res = await pool.query(
-            "SELECT * FROM appeals WHERE election_id = $1 ORDER BY created_at DESC",
-            [electionId]
-        )
+    const adminQuery = `
+        ${baseQuery}
+        ORDER BY a.created_at DESC
+    `
 
-        appeals = res.rows
-    } else {
-        const res = await pool.query(
-            "SELECT * FROM appeals WHERE user_id = $1 AND  election_id = $2 ORDER BY created_at DESC",
-            [userId, electionId]
-        )
+    const userQuery = `
+        ${baseQuery}
+        AND a.user_id = $2
+        ORDER BY a.created_at DESC
+    `
 
-        appeals = res.rows
-    }
+    const res =
+        role === "admin"
+            ? await pool.query(adminQuery, [electionId])
+            : await pool.query(userQuery, [electionId, userId])
 
-    return appeals
+    return res.rows
 }
 
 export const getAppeal = async (data) => {
@@ -100,9 +104,22 @@ export const getAppeal = async (data) => {
 
     if (!appealId) throw new CustomError("Appeal id is required", 400)
 
-    const res = await pool.query("SELECT * FROM appeals WHERE id = $1", [
-        appealId
-    ])
+    const res = await pool.query(
+        `
+        SELECT
+            a.*,
+            u.role AS user_role,
+            u.name  AS user_name,
+            suv.admno,
+            tuv.empcode
+        FROM appeals a
+        JOIN users u ON u.id = a.user_id
+        LEFT JOIN student_user_view suv ON suv.user_id = a.user_id
+        LEFT JOIN teacher_user_view tuv ON tuv.user_id = a.user_id
+        WHERE a.id = $1
+        `,
+        [appealId]
+    )
 
     if (res.rowCount === 0) throw new CustomError("Appeal not found", 404)
 
@@ -114,7 +131,12 @@ export const getAppeal = async (data) => {
         [appealId]
     )
 
-    const appeal = { ...res.rows[0], attachments: attachments.rows }
+    const appeal = {
+        ...res.rows[0],
+        identifier:
+            appeal.user_role === "student" ? appeal.admno : appeal.empcode,
+        attachments: attachments.rows
+    }
 
     return appeal
 }
