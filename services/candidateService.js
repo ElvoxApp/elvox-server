@@ -6,12 +6,13 @@ import { getStudent } from "./studentService.js"
 
 export const createCandidate = async (data) => {
     if (!data?.body?.election_id)
-        throw new CustomError("Election id is required")
-    if (!data?.body?.position) throw new CustomError("Position is required")
+        throw new CustomError("Election is required", 400)
+    if (!data?.body?.position)
+        throw new CustomError("Position is required", 400)
     if (!data?.body?.nominee1Admno)
-        throw new CustomError("Nominee 1 admission number is required")
+        throw new CustomError("Nominee 1 admission number is required", 400)
     if (!data?.body?.nominee2Admno)
-        throw new CustomError("Nominee 2 admission number is required")
+        throw new CustomError("Nominee 2 admission number is required", 400)
     if (!data?.files?.signature?.[0])
         throw new CustomError("Signature is required", 400)
     if (!data?.files?.nominee1Proof?.[0])
