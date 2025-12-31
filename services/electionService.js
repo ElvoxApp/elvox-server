@@ -19,3 +19,11 @@ export const getElection = async (id) => {
 
     return res.rows[0]
 }
+
+export const getAllElections = async () => {
+    const res = await pool.query("SELECT name, id, status FROM elections")
+
+    if (res.rowCount === 0) throw new CustomError("No election found", 404)
+
+    return res.rows
+}

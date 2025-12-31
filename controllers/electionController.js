@@ -19,3 +19,13 @@ export const getElection = async (req, res, next) => {
         next(err)
     }
 }
+
+export const getAllElections = async (req, res, next) => {
+    try {
+        const elections = await electionService.getAllElections()
+
+        return res.status(200).json(elections)
+    } catch (err) {
+        next(err)
+    }
+}
