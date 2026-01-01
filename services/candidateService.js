@@ -7,8 +7,8 @@ import { getStudent } from "./studentService.js"
 export const createCandidate = async (data) => {
     if (!data?.body?.election_id)
         throw new CustomError("Election is required", 400)
-    if (!data?.body?.position)
-        throw new CustomError("Position is required", 400)
+    if (!data?.body?.category)
+        throw new CustomError("Category is required", 400)
     if (!data?.body?.nominee1Admno)
         throw new CustomError("Nominee 1 admission number is required", 400)
     if (!data?.body?.nominee2Admno)
@@ -71,12 +71,12 @@ export const createCandidate = async (data) => {
         await client.query("BEGIN")
 
         const res = await client.query(
-            "INSERT INTO candidates (election_id, user_id, name, position, department_id, department, class_id, class, semester, profile_pic, signature, nominee1_admno, nominee1_name, nominee1_proof, nominee2_admno, nominee2_name, nominee2_proof) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING  election_id, name, position, nominee1_name, nominee2_name, created_at",
+            "INSERT INTO candidates (election_id, user_id, name, category, department_id, department, class_id, class, semester, profile_pic, signature, nominee1_admno, nominee1_name, nominee1_proof, nominee2_admno, nominee2_name, nominee2_proof) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17) RETURNING  election_id, name, category, nominee1_name, nominee2_name, created_at",
             [
                 election.id,
                 data.user.id,
                 data.user.name,
-                data.body.position,
+                data.body.category,
                 data.user.department_id,
                 data.user.department,
                 data.user.class_id,
@@ -117,7 +117,7 @@ export const getMyCandidate = async ({ userId, electionId }) => {
     if (!electionId) throw new CustomError("Election id is required", 400)
 
     const res = await pool.query(
-        "SELECT actioned_by, actioned_by_name, class, class_id, created_at, department, department_id, election_id, id, name, nominee1_admno, nominee1_name, nominee2_admno, nominee2_name, position, profile_pic, rejection_reason, semester, status, updated_at, user_id FROM candidates WHERE user_id = $1 AND status != 'withdrawn' AND election_id = $2",
+        "SELECT actioned_by, actioned_by_name, class, class_id, created_at, department, department_id, election_id, id, name, nominee1_admno, nominee1_name, nominee2_admno, nominee2_name, category, profile_pic, rejection_reason, semester, status, updated_at, user_id FROM candidates WHERE user_id = $1 AND status != 'withdrawn' AND election_id = $2",
         [userId, electionId]
     )
 
@@ -186,14 +186,14 @@ export const getCandidates = async (data) => {
             )
 
         const res = await pool.query(
-            "SELECT name, id, election_id, profile_pic, status, created_at FROM candidates WHERE status = $1 AND class_id = $2 AND election_id IN (SELECT id FROM elections WHERE status = 'nominations')",
+            "SELECT name, id, election_id, profile_pic, status, category, created_at FROM candidates WHERE status = $1 AND class_id = $2 AND election_id IN (SELECT id FROM elections WHERE status = 'nominations')",
             [status, tutor_of]
         )
 
         candidates = res.rows
     } else if (status === "approved") {
         const res = await pool.query(
-            "SELECT name, id, election_id, position, department, class, semester, profile_pic, status, actioned_by, updated_at FROM candidates WHERE status = $1 AND election_id IN ( SELECT id FROM elections WHERE status != 'closed')",
+            "SELECT name, id, election_id, category, department, class, semester, profile_pic, status, actioned_by, updated_at FROM candidates WHERE status = $1 AND election_id IN ( SELECT id FROM elections WHERE status != 'closed')",
             [status]
         )
 
