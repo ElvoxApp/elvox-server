@@ -1,0 +1,14 @@
+import * as resultService from "../services/resultService.js"
+
+export const getResults = async (req, res, next) => {
+    try {
+        const data = await resultService.getReults(
+            req.params.electionId,
+            req.query
+        )
+
+        res.status(200).json(data)
+    } catch (err) {
+        next(err)
+    }
+}
