@@ -110,17 +110,6 @@ export const verifyOtpSignup = async (data) => {
 
     if (!role) throw new CustomError("Role is required", 400)
 
-    // ONLY FOR TESTING ONLY, MUST REMOVE IN PROD
-    if (data.otp === "123456") {
-        const signupToken = jwt.sign(
-            { role, admno, empcode, purpose: "signup" },
-            process.env.SIGNUP_SECRET,
-            { expiresIn: "5m" }
-        )
-        return { message: "OTP verified", signupToken }
-    }
-    // ----------------------------------------
-
     const record = otps.get(data[otpMethod])
 
     if (!record) throw new CustomError("No OTP found", 400)
