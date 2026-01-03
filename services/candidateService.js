@@ -3,6 +3,7 @@ import CustomError from "../utils/CustomError.js"
 import { uploadFile, deleteFile, getURL } from "../utils/file.js"
 import { getElection } from "./electionService.js"
 import { getStudent } from "./studentService.js"
+import { sendNotification } from "./notificationService.js"
 
 export const createCandidate = async (data) => {
     if (!data?.body?.election_id)
@@ -91,6 +92,23 @@ export const createCandidate = async (data) => {
                 nominee2.name,
                 getURL(nominee2Proof.path)
             ]
+        )
+
+        const tutorRes = await client.query(
+            "SELECT user_id from teachers WHERE tutor_of = $1",
+            [data.user.class_id]
+        )
+
+        const notificationOptions = {
+            message:
+                "A new candidate application has been submitted and is awaiting your review",
+            type: "info"
+        }
+
+        await sendNotification(
+            [tutorRes.rows[0].user_id],
+            notificationOptions,
+            client
         )
 
         await client.query("COMMIT")
@@ -253,7 +271,7 @@ export const withdrawCandidate = async (data) => {
         // 1. Lock + read current status
         const res = await client.query(
             `
-            SELECT status
+            SELECT status, user_id
             FROM candidates
             WHERE id = $1
             FOR UPDATE`,
@@ -288,6 +306,17 @@ export const withdrawCandidate = async (data) => {
             )
         }
 
+        const notificationOptions = {
+            message: "Your candidate application has been withdrawn",
+            type: "success"
+        }
+
+        await sendNotification(
+            [res.rows[0].user_id],
+            notificationOptions,
+            client
+        )
+
         await client.query("COMMIT")
 
         return { message: "Candidate application withdrawn successfully" }
@@ -301,7 +330,7 @@ export const withdrawCandidate = async (data) => {
 
 export const reviewCandidate = async (candidateId, body, user) => {
     const { status, rejectionReason, electionId } = body
-    const { id: tutorUserId, name: tutorName } = user
+    const { id: tutorUserId, name: tutorName, tutor_of: tutorId } = user
 
     if (!candidateId) throw new CustomError("Candidate id is required", 400)
     if (!electionId) throw new CustomError("Election id is required", 400)
@@ -334,7 +363,7 @@ export const reviewCandidate = async (candidateId, body, user) => {
         // 1. Lock candidate row
         const { rows } = await client.query(
             `
-            SELECT status
+            SELECT status, class_id, user_id
             FROM candidates
             WHERE id = $1
             FOR UPDATE`,
@@ -344,14 +373,22 @@ export const reviewCandidate = async (candidateId, body, user) => {
         if (rows.length === 0)
             throw new CustomError("No candidate application found", 404)
 
-        if (rows[0].status === "withdrawn")
+        const { status: currentStatus, class_id, user_id: userId } = rows[0]
+
+        if (currentStatus === "withdrawn")
             throw new CustomError(
                 "Candidate already withdrew their application",
                 400
             )
 
-        if (rows[0].status !== "pending")
+        if (currentStatus !== "pending")
             throw new CustomError("Candidate already reviewed", 400)
+
+        if (tutorId !== class_id)
+            throw new CustomError(
+                "You are not authorized to review this candidate",
+                403
+            )
 
         // 2. Update status
         await client.query(
@@ -368,6 +405,20 @@ export const reviewCandidate = async (candidateId, body, user) => {
                 [electionId]
             )
         }
+
+        const notificationOptions =
+            status === "approved"
+                ? {
+                      message: "Your candidate application has been approved",
+                      type: "success"
+                  }
+                : {
+                      message:
+                          "Your application has been reviewed and rejected. Please check the reason provided by your tutor",
+                      type: "error"
+                  }
+
+        await sendNotification([userId], notificationOptions, client)
 
         await client.query("COMMIT")
 
