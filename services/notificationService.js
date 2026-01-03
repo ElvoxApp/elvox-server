@@ -27,13 +27,19 @@ export const markNotificationRead = async (data) => {
     if (res.rowCount === 0) throw new CustomError("Notification not found", 404)
 }
 
-export const sendNotification = async (userIds, { message, type }) => {
-    if (!userIds.length) return
+export const sendNotification = async (
+    userIds,
+    { message, type },
+    client = null
+) => {
+    if (!userIds?.length) return
+
+    const executor = client ?? pool
 
     const query = `
     INSERT INTO notifications (user_id, message, type)
     SELECT UNNEST($1::uuid[]), $2, $3
   `
 
-    await pool.query(query, [userIds, message, type])
+    await executor.query(query, [userIds, message, type])
 }
