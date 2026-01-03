@@ -7,7 +7,8 @@ import {
     getCandidate,
     getCandidates,
     getMyCandidate,
-    withdrawCandidate
+    withdrawCandidate,
+    reviewCandidate
 } from "../controllers/candidateController.js"
 import upload from "../middleware/upload.js"
 
@@ -31,6 +32,7 @@ router.patch(
     requirePassword,
     withdrawCandidate
 )
+router.patch("/:id/status", requireRole(["tutor"]), reviewCandidate)
 router.get("/exists/:id", checkCandidateExists)
 router.get(
     "/:id",

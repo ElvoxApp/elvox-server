@@ -132,17 +132,19 @@ export const getMyCandidate = async ({ userId, electionId }) => {
     return res.rows[0]
 }
 
-export const checkCandidateExists = async (userId) => {
+export const checkCandidateExists = async (userId, electionId) => {
     if (!userId) throw new CustomError("User id is required", 400)
+    if (!electionId) throw new CustomError("Election id is required", 400)
 
     const res = await pool.query(
-        "SELECT status, election_id FROM candidates WHERE user_id = $1",
-        [userId]
+        "SELECT status FROM candidates WHERE user_id = $1 AND election_id = $2",
+        [userId, electionId]
     )
 
     if (res.rowCount === 0) return { exists: false }
 
-    const election = await getElection(res.rows[0].election_id)
+    const election = await getElection(electionId)
+
     if (election.status === "closed") return { exists: false }
 
     return { exists: true, status: res.rows[0].status }
@@ -184,9 +186,33 @@ export const getCandidates = async (data) => {
                 "You must need to be a tutor to access pending candidate applications",
                 403
             )
-
         const res = await pool.query(
-            "SELECT name, id, election_id, profile_pic, status, category, created_at FROM candidates WHERE status = $1 AND class_id = $2 AND election_id IN (SELECT id FROM elections WHERE status = 'nominations')",
+            `
+            SELECT
+                c.name,
+                c.id,
+                c.election_id,
+                c.profile_pic,
+                c.status,
+                c.category,
+                c.department,
+                c.class,
+                c.signature,
+                c.nominee1_admno,
+                c.nominee2_admno,
+                c.nominee1_proof,
+                c.nominee2_proof,
+                c.nominee1_name,
+                c.nominee2_name,
+                c.semester,
+                c.created_at,
+                s.admno
+            FROM candidates c
+            JOIN students s ON s.user_id = c.user_id
+            WHERE c.status = $1 
+                AND c.class_id = $2 
+                AND c.election_id IN (SELECT id FROM elections WHERE status = 'nominations')
+            `,
             [status, tutor_of]
         )
 
@@ -213,7 +239,7 @@ export const withdrawCandidate = async (data) => {
 
     const election = await getElection(election_id)
 
-    if (Date.now > new Date(election.nomination_end))
+    if (Date.now() > new Date(election.nomination_end))
         throw new CustomError(
             "Cannot withdraw after nomination period ends",
             403
@@ -228,4 +254,44 @@ export const withdrawCandidate = async (data) => {
         throw new CustomError("No candidate application found", 404)
 
     return { message: "Candidate application withdrawn successfully" }
+}
+
+export const reviewCandidate = async (candidateId, body, user) => {
+    const { status, rejectionReason, electionId } = body
+    const { id: tutorUserId, name: tutorName } = user
+
+    if (!candidateId) throw new CustomError("Candidate id is required", 400)
+    if (!electionId) throw new CustomError("Election id is required", 400)
+    if (!status) throw new CustomError("Status is required", 400)
+
+    if (!["approved", "rejected"].includes(status))
+        throw new CustomError("Invalid status", 400)
+
+    if (status === "rejected" && !rejectionReason)
+        throw new CustomError("Rejection reason is required", 400)
+
+    if (!tutorUserId || !tutorName)
+        throw new CustomError("Reviewer's name and user id is required", 400)
+
+    const election = await getElection(electionId)
+
+    if (Date.now() > new Date(election.nomination_end))
+        throw new CustomError(
+            `Cannot ${
+                status === "approved" ? "approve" : "reject"
+            } after nomination period ends`,
+            403
+        )
+
+    const res = await pool.query(
+        "UPDATE candidates SET status = $1, actioned_by = $2, rejection_reason = $3, actioned_by_name = $4 WHERE id = $5 AND status = 'pending'",
+        [status, tutorUserId, rejectionReason, tutorName, candidateId]
+    )
+
+    if (res.rowCount === 0)
+        throw new CustomError("No candidate application found", 404)
+
+    return {
+        message: `Candidate application ${status} successfully`
+    }
 }
