@@ -323,7 +323,8 @@ export const withdrawCandidate = async (data) => {
         )
 
         const studentNotificationOptions = {
-            message: "Your candidate application has been withdrawn",
+            message:
+                "Your candidate application has been successfully withdrawn",
             type: "success"
         }
         const tutorNotificationOptions = {
