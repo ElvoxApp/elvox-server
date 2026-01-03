@@ -245,15 +245,58 @@ export const withdrawCandidate = async (data) => {
             403
         )
 
-    const res = await pool.query(
-        "UPDATE candidates SET status = 'withdrawn' WHERE id = $1",
-        [id]
-    )
+    const client = await pool.connect()
 
-    if (res.rowCount === 0)
-        throw new CustomError("No candidate application found", 404)
+    try {
+        await client.query("BEGIN")
 
-    return { message: "Candidate application withdrawn successfully" }
+        // 1. Lock + read current status
+        const res = await client.query(
+            `
+            SELECT status
+            FROM candidates
+            WHERE id = $1
+            FOR UPDATE`,
+            [id]
+        )
+
+        if (res.rowCount === 0)
+            throw new CustomError("No candidate application found", 404)
+
+        const prevStatus = res.rows[0].status
+
+        if (!["approved", "pending"].includes(prevStatus))
+            throw new CustomError("Candidate cannot be withdrawn", 400)
+
+        // 2. Update status
+        await client.query(
+            `
+            UPDATE candidates
+            SET status = 'withdrawn'
+            WHERE id = $1`,
+            [id]
+        )
+
+        // 3. Decrement only if previously approved
+        if (prevStatus === "approved") {
+            await client.query(
+                `
+                UPDATE elections
+                SET total_candidates = total_candidates - 1
+                WHERE id = $1`,
+                [election_id]
+            )
+        }
+
+        await client.query("COMMIT")
+
+        return { message: "Candidate application withdrawn successfully" }
+    } catch (err) {
+        await client.query("ROLLBACK")
+        throw err
+    } finally {
+        client.release()
+    }
 }
 
 export const reviewCandidate = async (candidateId, body, user) => {
@@ -283,15 +326,58 @@ export const reviewCandidate = async (candidateId, body, user) => {
             403
         )
 
-    const res = await pool.query(
-        "UPDATE candidates SET status = $1, actioned_by = $2, rejection_reason = $3, actioned_by_name = $4 WHERE id = $5 AND status = 'pending'",
-        [status, tutorUserId, rejectionReason, tutorName, candidateId]
-    )
+    const client = await pool.connect()
 
-    if (res.rowCount === 0)
-        throw new CustomError("No candidate application found", 404)
+    try {
+        await client.query("BEGIN")
 
-    return {
-        message: `Candidate application ${status} successfully`
+        // 1. Lock candidate row
+        const { rows } = await client.query(
+            `
+            SELECT status
+            FROM candidates
+            WHERE id = $1
+            FOR UPDATE`,
+            [candidateId]
+        )
+
+        if (rows.length === 0)
+            throw new CustomError("No candidate application found", 404)
+
+        if (rows[0].status === "withdrawn")
+            throw new CustomError(
+                "Candidate already withdrew their application",
+                400
+            )
+
+        if (rows[0].status !== "pending")
+            throw new CustomError("Candidate already reviewed", 400)
+
+        // 2. Update status
+        await client.query(
+            "UPDATE candidates SET status = $1, actioned_by = $2, rejection_reason = $3, actioned_by_name = $4 WHERE id = $5",
+            [status, tutorUserId, rejectionReason, tutorName, candidateId]
+        )
+
+        // 3. Increment only on approve
+        if (status === "approved") {
+            await client.query(
+                `UPDATE elections
+             SET total_candidates = total_candidates + 1
+             WHERE id = $1`,
+                [electionId]
+            )
+        }
+
+        await client.query("COMMIT")
+
+        return {
+            message: `Candidate application ${status} successfully`
+        }
+    } catch (err) {
+        await client.query("ROLLBACK")
+        throw err
+    } finally {
+        client.release()
     }
 }
