@@ -13,7 +13,7 @@ const router = Router()
 router.get("/", getElections)
 router.get("/all", getAllElections)
 router.get("/supervisors", requireRole(["admin"]), getSupervisors)
-router.get("/:id/supervisors", requireRole(["admin"]), updateSupervisors)
+router.post("/:id/supervisors", requireRole(["admin"]), updateSupervisors)
 router.get("/:id", getElection)
 
 export default router
