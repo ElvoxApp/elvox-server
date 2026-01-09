@@ -19,6 +19,8 @@ import appealRouter from "./routes/appealRoute.js"
 import resultRouter from "./routes/resultRoute.js"
 import voterRouter from "./routes/voterRoute.js"
 
+import "./jobs/index.js"
+
 const app = express()
 
 const DEV_ORIGINS = [
