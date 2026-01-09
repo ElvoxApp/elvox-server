@@ -6,9 +6,6 @@ export const getElections = async () => {
         "SELECT * FROM elections WHERE status != 'closed' ORDER BY election_start DESC"
     )
 
-    if (res.rowCount === 0)
-        throw new CustomError("No active election found", 404)
-
     return res.rows[0]
 }
 
