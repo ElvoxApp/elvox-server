@@ -52,3 +52,13 @@ export const updateSupervisors = async (req, res, next) => {
         next(err)
     }
 }
+
+export const createElection = async (req, res, next) => {
+    try {
+        const data = await electionService.createElection(req.body)
+
+        return res.status(201).json(data)
+    } catch (err) {
+        next(err)
+    }
+}

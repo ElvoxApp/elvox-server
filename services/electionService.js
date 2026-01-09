@@ -1,5 +1,6 @@
 import pool from "../db/db.js"
 import CustomError from "../utils/CustomError.js"
+import { sendNotification } from "./notificationService.js"
 
 export const getElections = async () => {
     const res = await pool.query(
@@ -100,6 +101,90 @@ export const updateSupervisors = async (electionId, payload) => {
             added: addedCount,
             removed: removedCount
         }
+    } catch (err) {
+        await client.query("ROLLBACK")
+        throw err
+    } finally {
+        client.release()
+    }
+}
+
+export const createElection = async (data) => {
+    const {
+        electionName,
+        nominationStart,
+        nominationEnd,
+        votingStart,
+        votingEnd,
+        electionEnd
+    } = data
+
+    if (!electionName) throw new CustomError("Election name is required", 400)
+
+    const parseTs = (v, name) => {
+        const t = Date.parse(v)
+        if (!v || Number.isNaN(t)) {
+            throw new CustomError(`${name} is invalid or missing`, 400)
+        }
+        return t
+    }
+
+    const ns = parseTs(nominationStart, "Nomination start")
+    const ne = parseTs(nominationEnd, "Nomination end")
+    const vs = parseTs(votingStart, "Voting start")
+    const ve = parseTs(votingEnd, "Voting end")
+    const ee = parseTs(electionEnd, "Election end")
+
+    if (ns <= Date.now())
+        throw new CustomError("Nomination start must be in the future", 400)
+
+    if (!(ns < ne))
+        throw new CustomError(
+            "Nomination end must be after nomination start",
+            400
+        )
+
+    if (!(ne < vs))
+        throw new CustomError("Voting must start after nominations end", 400)
+
+    if (!(vs < ve))
+        throw new CustomError("Voting end must be after voting start", 400)
+
+    if (!(ve < ee))
+        throw new CustomError("Election end must be after voting ends", 400)
+
+    const client = await pool.connect()
+
+    try {
+        await client.query("BEGIN")
+
+        const res = await client.query(
+            "INSERT INTO elections (name, election_start, election_end, nomination_start, nomination_end, voting_start, voting_end) VALUES ($1, NOW(), $2, $3, $4, $5, $6) RETURNING *",
+            [
+                electionName,
+                electionEnd,
+                nominationStart,
+                nominationEnd,
+                votingStart,
+                votingEnd
+            ]
+        )
+
+        const userIdsRes = await client.query("SELECT id FROM users")
+        const userIds = userIdsRes.rows.map((row) => row.id)
+
+        await sendNotification(
+            userIds,
+            {
+                message: `Election "${electionName}" has been created`,
+                type: "info"
+            },
+            client
+        )
+
+        await client.query("COMMIT")
+
+        return res.rows[0]
     } catch (err) {
         await client.query("ROLLBACK")
         throw err
