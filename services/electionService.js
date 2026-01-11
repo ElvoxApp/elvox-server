@@ -1,11 +1,15 @@
+import crypto from "crypto"
 import pool from "../db/db.js"
 import CustomError from "../utils/CustomError.js"
 import { sendNotification } from "./notificationService.js"
+import hashSecretKey from "../utils/hashSecretKey.js"
 
 export const getElection = async (role) => {
     const res = await pool.query(
         "SELECT * FROM elections WHERE status != 'closed' ORDER BY election_start DESC LIMIT 1"
     )
+
+    if (res.rowCount === 0) return null
 
     const {
         desktop_voting_key_hash,
@@ -552,6 +556,55 @@ export const updateAutoPublishResults = async (id, data) => {
         await client.query("COMMIT")
 
         return { message: "Auto publish results updated successfully" }
+    } catch (err) {
+        await client.query("ROLLBACK")
+        throw err
+    } finally {
+        client.release()
+    }
+}
+
+// GENERATES OR REGENERATES THE SECRET KEY
+export const generateSecretKey = async (id) => {
+    if (!id) throw new CustomError("Election id is required", 400)
+
+    const client = await pool.connect()
+
+    try {
+        await client.query("BEGIN")
+
+        const res = await client.query(
+            "SELECT status FROM elections WHERE id = $1 FOR UPDATE",
+            [id]
+        )
+
+        if (res.rowCount === 0) throw new CustomError("No election found", 404)
+
+        const ALLOWED = ["pre-voting", "voting"]
+
+        if (!ALLOWED.includes(res.rows[0].status))
+            throw new CustomError(
+                "Secret key can only be generated during pre-voting and voting",
+                409
+            )
+
+        const plainKey = crypto.randomBytes(32).toString("hex")
+
+        const hashedKey = hashSecretKey(plainKey)
+
+        await client.query(
+            `
+            UPDATE elections
+            SET desktop_voting_key_hash = $1,
+            desktop_voting_key_generated_at = NOW()
+            WHERE id = $2
+            `,
+            [hashedKey, id]
+        )
+
+        await client.query("COMMIT")
+
+        return { secretKey: plainKey }
     } catch (err) {
         await client.query("ROLLBACK")
         throw err

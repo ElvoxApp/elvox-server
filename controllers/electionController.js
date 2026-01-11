@@ -121,3 +121,14 @@ export const updateAutoPublishResults = async (req, res, next) => {
         next(err)
     }
 }
+
+// GENERATES OR REGENERATES THE SECRET KEY
+export const generateSecretKey = async (req, res, next) => {
+    try {
+        const data = await electionService.generateSecretKey(req.params.id)
+
+        return res.status(201).json(data)
+    } catch (err) {
+        next(err)
+    }
+}
