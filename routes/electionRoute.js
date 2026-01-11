@@ -5,7 +5,7 @@ import {
     updateElection,
     getAllElections,
     getElection,
-    getElections,
+    getElectionDetails,
     getSupervisors,
     getReservedClasses,
     updateReservedClasses,
@@ -17,7 +17,7 @@ import requirePassword from "../middleware/requirePassword.js"
 
 const router = Router()
 
-router.get("/", getElections)
+router.get("/", getElection)
 router.get("/all", getAllElections)
 router.post("/", requireRole(["admin"]), createElection)
 router.get("/supervisors", requireRole(["admin"]), getSupervisors)
@@ -39,6 +39,6 @@ router.patch(
 )
 router.delete("/:id", requireRole(["admin"]), requirePassword, deleteElection)
 router.patch("/:id", requireRole(["admin"]), updateElection)
-router.get("/:id", getElection)
+router.get("/:id", getElectionDetails)
 
 export default router

@@ -1,8 +1,8 @@
 import * as electionService from "../services/electionService.js"
 
-export const getElections = async (req, res, next) => {
+export const getElection = async (req, res, next) => {
     try {
-        const elections = await electionService.getElections()
+        const elections = await electionService.getElection(req.user.role)
 
         return res.status(200).json(elections)
     } catch (err) {
@@ -10,9 +10,9 @@ export const getElections = async (req, res, next) => {
     }
 }
 
-export const getElection = async (req, res, next) => {
+export const getElectionDetails = async (req, res, next) => {
     try {
-        const election = await electionService.getElection(req.params.id)
+        const election = await electionService.getElectionDetails(req.params.id)
 
         return res.status(200).json(election)
     } catch (err) {

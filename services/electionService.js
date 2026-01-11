@@ -2,9 +2,9 @@ import pool from "../db/db.js"
 import CustomError from "../utils/CustomError.js"
 import { sendNotification } from "./notificationService.js"
 
-export const getElections = async () => {
+export const getElection = async (role) => {
     const res = await pool.query(
-        "SELECT * FROM elections WHERE status != 'closed' ORDER BY election_start DESC"
+        "SELECT * FROM elections WHERE status != 'closed' ORDER BY election_start DESC LIMIT 1"
     )
 
     const {
@@ -13,10 +13,15 @@ export const getElections = async () => {
         ...data
     } = res.rows[0]
 
-    return data
+    return {
+        ...data,
+        ...(role === "admin" && {
+            hasSecretKey: desktop_voting_key_hash !== null
+        })
+    }
 }
 
-export const getElection = async (id) => {
+export const getElectionDetails = async (id) => {
     const res = await pool.query("SELECT * FROM elections WHERE id = $1", [id])
 
     if (res.rowCount === 0) throw new CustomError("No election found", 404)
