@@ -11,6 +11,17 @@ export const getElection = async (role) => {
 
     if (res.rowCount === 0) return null
 
+    let totalActivatedSystems = 0
+
+    if (role === "admin") {
+        const votingDevicesRes = await pool.query(
+            "SELECT COUNT(*) FROM voting_devices WHERE election_id = $1 AND revoked_at IS NULL",
+            [res.rows[0].id]
+        )
+
+        totalActivatedSystems = votingDevicesRes.rows[0].count
+    }
+
     const {
         desktop_voting_key_hash,
         desktop_voting_key_generated_at,
@@ -20,7 +31,8 @@ export const getElection = async (role) => {
     return {
         ...data,
         ...(role === "admin" && {
-            hasSecretKey: desktop_voting_key_hash !== null
+            hasSecretKey: desktop_voting_key_hash !== null,
+            totalActivatedSystems
         })
     }
 }
