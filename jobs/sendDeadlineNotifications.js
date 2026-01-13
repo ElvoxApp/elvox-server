@@ -40,7 +40,6 @@ export const sendDeadlineNotifications = async (client, electionId) => {
         SELECT *
         FROM elections
         WHERE id = $1
-        FOR UPDATE
         `,
         [electionId]
     )
