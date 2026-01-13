@@ -19,7 +19,7 @@ const runCron = async () => {
 
         for (const { id } of rows) {
             await advanceElectionStatus(client, id)
-            await sendDeadlineNotifications(pool, id)
+            await sendDeadlineNotifications(id)
         }
 
         await client.query("COMMIT")

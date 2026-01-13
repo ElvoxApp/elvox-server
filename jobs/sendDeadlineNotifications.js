@@ -1,3 +1,4 @@
+import pool from "../db/db.js"
 import { sendNotification } from "../services/notificationService.js"
 
 const REMINDER_MESSAGES = {
@@ -32,89 +33,83 @@ const isWithinWindow = (deadline, now, windowMs) => {
     return diff <= windowMs && diff > windowMs - 30 * 1000
 }
 
-export const sendDeadlineNotifications = async (client, electionId) => {
-    // send deadline notifications
-
-    const { rows } = await client.query(
-        `
+// send deadline notifications
+export const sendDeadlineNotifications = async (electionId) => {
+    try {
+        const { rows } = await pool.query(
+            `
         SELECT *
         FROM elections
         WHERE id = $1
         `,
-        [electionId]
-    )
+            [electionId]
+        )
 
-    if (!rows.length) return
+        if (!rows.length) return
 
-    const election = rows[0]
+        const election = rows[0]
 
-    const now = new Date()
+        const now = new Date()
 
-    const nowMs = now.getTime()
+        const nowMs = now.getTime()
 
-    const nominationEnd = new Date(election.nomination_end).getTime()
-    const votingStart = new Date(election.voting_start).getTime()
+        const nominationEnd = new Date(election.nomination_end).getTime()
+        const votingStart = new Date(election.voting_start).getTime()
 
-    const nomination24h = isWithinWindow(nominationEnd, nowMs, 24 * MS.HOUR)
-    const nomination1h = isWithinWindow(nominationEnd, nowMs, 1 * MS.HOUR)
+        const nomination24h = isWithinWindow(nominationEnd, nowMs, 24 * MS.HOUR)
+        const nomination1h = isWithinWindow(nominationEnd, nowMs, 1 * MS.HOUR)
 
-    const votingStart24h = isWithinWindow(votingStart, nowMs, 24 * MS.HOUR)
-    const votingStart1h = isWithinWindow(votingStart, nowMs, 1 * MS.HOUR)
+        const votingStart24h = isWithinWindow(votingStart, nowMs, 24 * MS.HOUR)
+        const votingStart1h = isWithinWindow(votingStart, nowMs, 1 * MS.HOUR)
 
-    const { rows: users } = await client.query(
-        `SELECT u.id, u.role, CASE WHEN t.user_id IS NOT NULL THEN true ELSE false END AS is_tutor FROM users u LEFT JOIN teachers t ON t.user_id = u.id`
-    )
+        const { rows: users } = await pool.query(
+            `SELECT u.id, u.role, CASE WHEN t.user_id IS NOT NULL THEN true ELSE false END AS is_tutor FROM users u LEFT JOIN teachers t ON t.user_id = u.id`
+        )
 
-    const students = []
-    const tutors = []
-    const otherNonStudents = []
+        const students = []
+        const tutors = []
+        const otherNonStudents = []
 
-    for (const user of users) {
-        if (user.role === "student") {
-            students.push(user.id)
-        } else if (user.is_tutor) {
-            tutors.push(user.id)
-        } else {
-            otherNonStudents.push(user.id)
+        for (const user of users) {
+            if (user.role === "student") {
+                students.push(user.id)
+            } else if (user.is_tutor) {
+                tutors.push(user.id)
+            } else {
+                otherNonStudents.push(user.id)
+            }
         }
-    }
 
-    // Nomination end reminders
-    if (nomination24h || nomination1h) {
-        const key = nomination24h ? "24h" : "1h"
+        // Nomination end reminders
+        if (nomination24h || nomination1h) {
+            const key = nomination24h ? "24h" : "1h"
 
-        await sendNotification(
-            students,
-            {
+            await sendNotification(students, {
                 message: REMINDER_MESSAGES.nomination.student[key],
                 type: "warning"
-            },
-            client
-        )
+            })
 
-        await sendNotification(
-            tutors,
-            {
+            await sendNotification(tutors, {
                 message: REMINDER_MESSAGES.nomination.tutor[key],
                 type: "warning"
-            },
-            client
-        )
+            })
 
-        await sendNotification(
-            otherNonStudents,
-            { message: REMINDER_MESSAGES.nomination.other[key], type: "info" },
-            client
-        )
-    }
+            await sendNotification(otherNonStudents, {
+                message: REMINDER_MESSAGES.nomination.other[key],
+                type: "info"
+            })
+        }
 
-    // Voting start reminders
-    if (votingStart24h || votingStart1h) {
-        const key = votingStart24h ? "24h" : "1h"
-        const message = REMINDER_MESSAGES.votingStart.all[key]
+        // Voting start reminders
+        if (votingStart24h || votingStart1h) {
+            const key = votingStart24h ? "24h" : "1h"
+            const message = REMINDER_MESSAGES.votingStart.all[key]
 
-        const allUsers = [...students, ...tutors, ...otherNonStudents]
+            const allUsers = [...students, ...tutors, ...otherNonStudents]
 
-        await sendNotification(allUsers, { message, type: "info" }, client)
+            await sendNotification(allUsers, { message, type: "info" })
+        }
+    } catch (err) {
+        console.error(err)
     }
 }
