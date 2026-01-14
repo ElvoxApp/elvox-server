@@ -252,6 +252,29 @@ export const getCandidates = async (data) => {
 
     if (!status) throw new CustomError("Status is required", 400)
 
+    if (role === "admin") {
+        if (
+            !["all", "approved", "pending", "rejected", "withdrawn"].includes(
+                status
+            )
+        )
+            throw new CustomError("Invalid status", 400)
+
+        let query =
+            "SELECT name, id, election_id, category, department, class, semester, profile_pic, status, actioned_by, updated_at, created_at FROM candidates WHERE election_id IN ( SELECT id FROM elections WHERE status != 'closed')"
+
+        const values = []
+
+        if (status !== "all") {
+            query += " AND status = $1"
+            values.push(status)
+        }
+
+        const res = await pool.query(query, values)
+
+        return res.rows
+    }
+
     let candidates
 
     if (status === "pending") {
@@ -300,7 +323,7 @@ export const getCandidates = async (data) => {
 
         candidates = res.rows
     } else {
-        throw new CustomError("Inalid status", 400)
+        throw new CustomError("Invalid status", 400)
     }
 
     return candidates
