@@ -2,7 +2,7 @@ import crypto from "crypto"
 import CustomError from "../utils/CustomError.js"
 import pool from "../db/db.js"
 import { checkStudentExists } from "./studentService.js"
-import { getElection } from "./electionService.js"
+import { getElectionDetails } from "./electionService.js"
 
 export const verifyVoter = async (data) => {
     const { admno, electionId, userId } = data
@@ -11,7 +11,7 @@ export const verifyVoter = async (data) => {
     if (!electionId) throw new CustomError("Election id is required", 400)
     if (!userId) throw new CustomError("Supervisor id is required", 400)
 
-    const election = await getElection(electionId)
+    const election = await getElectionDetails(electionId)
 
     if (election.status !== "voting")
         throw new CustomError(

@@ -1,7 +1,7 @@
 import pool from "../db/db.js"
 import CustomError from "../utils/CustomError.js"
 import { uploadFile, deleteFile, getURL } from "../utils/file.js"
-import { getElection } from "./electionService.js"
+import { getElectionDetails } from "./electionService.js"
 import { getStudent } from "./studentService.js"
 import { sendNotification } from "./notificationService.js"
 
@@ -41,12 +41,15 @@ export const createCandidate = async (data) => {
     if (!data?.files?.nominee2Proof?.[0])
         throw new CustomError("Nominee 2 proof is required", 400)
 
-    const election = await getElection(data.body.election_id)
+    const election = await getElectionDetails(data.body.election_id)
 
-    if (Date.now() < new Date(election.nomination_start))
+    if (election?.status === "closed")
+        throw new CustomError("Election is closed", 409)
+
+    if (election?.status === "draft")
         throw new CustomError("Nomination period has not started yet", 409)
 
-    if (Date.now() > new Date(election.nomination_end))
+    if (["pre-voting", "voting", "post-voting"].includes(election?.status))
         throw new CustomError("Nominations are closed", 409)
 
     if (data.user.semester > 8)
@@ -199,7 +202,7 @@ export const getMyCandidate = async ({ userId, electionId }) => {
     if (res.rowCount === 0)
         throw new CustomError("No candidate application found", 404)
 
-    const election = await getElection(res.rows[0].election_id)
+    const election = await getElectionDetails(res.rows[0].election_id)
 
     if (election.status === "closed")
         throw new CustomError("Election is closed", 403)
@@ -218,7 +221,7 @@ export const checkCandidateExists = async (userId, electionId) => {
 
     if (res.rowCount === 0) return { exists: false }
 
-    const election = await getElection(electionId)
+    const election = await getElectionDetails(electionId)
 
     if (election.status === "closed") return { exists: false }
 
@@ -335,11 +338,11 @@ export const withdrawCandidate = async (data) => {
     if (!id) throw new CustomError("Candidate id is required", 400)
     if (!election_id) throw new CustomError("Election id is required", 400)
 
-    const election = await getElection(election_id)
+    const election = await getElectionDetails(election_id)
 
-    if (Date.now() > new Date(election.nomination_end))
+    if (election?.status !== "nominations")
         throw new CustomError(
-            "Cannot withdraw after nomination period ends",
+            "Withdrawing application is only allowed during nomination period",
             403
         )
 
@@ -441,13 +444,11 @@ export const reviewCandidate = async (candidateId, body, user) => {
     if (!tutorUserId || !tutorName)
         throw new CustomError("Reviewer's name and user id is required", 400)
 
-    const election = await getElection(electionId)
+    const election = await getElectionDetails(electionId)
 
-    if (Date.now() > new Date(election.nomination_end))
+    if (election?.status !== "nominations")
         throw new CustomError(
-            `Cannot ${
-                status === "approved" ? "approve" : "reject"
-            } after nomination period ends`,
+            `Approving or rejecting application is only allowed during nomination period`,
             409
         )
 
