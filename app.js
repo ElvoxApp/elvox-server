@@ -6,6 +6,7 @@ import pool from "./db/db.js"
 import errorHandler from "./middleware/errorHandler.js"
 import notFound from "./middleware/notFound.js"
 import authMiddleware from "./middleware/auth.js"
+import requireRole from "./middleware/requireRole.js"
 
 import authRouter from "./routes/authRoute.js"
 import studentRouter from "./routes/studentRoute.js"
@@ -18,6 +19,7 @@ import notificationRouter from "./routes/notificationRoute.js"
 import appealRouter from "./routes/appealRoute.js"
 import resultRouter from "./routes/resultRoute.js"
 import voterRouter from "./routes/voterRoute.js"
+import logRouter from "./routes/logRoute.js"
 
 import "./jobs/index.js"
 
@@ -88,6 +90,7 @@ app.use("/notifications", authMiddleware, notificationRouter)
 app.use("/appeals", authMiddleware, appealRouter)
 app.use("/results", authMiddleware, resultRouter)
 app.use("/voters", authMiddleware, voterRouter)
+app.use("/elections", authMiddleware, requireRole(["admin"]), logRouter)
 
 app.use(notFound)
 app.use(errorHandler)
