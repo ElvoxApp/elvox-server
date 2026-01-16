@@ -378,17 +378,6 @@ export const withdrawCandidate = async (data) => {
             [id]
         )
 
-        // 3. Decrement only if previously approved
-        if (prevStatus === "approved") {
-            await client.query(
-                `
-                UPDATE elections
-                SET total_candidates = total_candidates - 1
-                WHERE id = $1`,
-                [election_id]
-            )
-        }
-
         const tutorRes = await client.query(
             "SELECT user_id from teachers WHERE tutor_of = $1",
             [res.rows[0].class_id]
@@ -492,16 +481,6 @@ export const reviewCandidate = async (candidateId, body, user) => {
             "UPDATE candidates SET status = $1, actioned_by = $2, rejection_reason = $3, actioned_by_name = $4 WHERE id = $5",
             [status, tutorUserId, rejectionReason, tutorName, candidateId]
         )
-
-        // 3. Increment only on approve
-        if (status === "approved") {
-            await client.query(
-                `UPDATE elections
-             SET total_candidates = total_candidates + 1
-             WHERE id = $1`,
-                [electionId]
-            )
-        }
 
         const notificationOptions =
             status === "approved"
