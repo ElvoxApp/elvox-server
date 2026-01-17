@@ -2,12 +2,26 @@ import pool from "../db/db.js"
 import CustomError from "../utils/CustomError.js"
 import { emitLog } from "../utils/sseManager.js"
 
-export const getLogs = async (id) => {
+export const getLogs = async (id, range = "all") => {
     if (!id) throw new CustomError("Election id is required", 400)
 
+    let timeCondition = ""
+    const values = [id]
+
+    if (range !== "all") {
+        const intervalMap = {
+            "1h": "1 hour",
+            "24h": "24 hours",
+            "7d": "7 days"
+        }
+
+        timeCondition = "AND created_at >= NOW() - $2::interval"
+        values.push(intervalMap[range])
+    }
+
     const res = await pool.query(
-        "SELECT * FROM logs WHERE election_id = $1 ORDER BY created_at ASC",
-        [id]
+        `SELECT id, level, message, created_at FROM logs WHERE election_id = $1 ${timeCondition} ORDER BY created_at ASC`,
+        values
     )
 
     return res.rows
