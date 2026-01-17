@@ -51,7 +51,7 @@ export const advanceElectionStatus = async (client, electionId) => {
     await createLog(
         electionId,
         {
-            level: "warning",
+            level: "info",
             message: `Election status advanced by system sheduler for ${election.name}`
         },
         client
