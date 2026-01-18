@@ -2,7 +2,7 @@ import { Router } from "express"
 import {
     getNotifications,
     markNotificationRead
-} from "../controllers/notificationController.js"
+} from "../../controllers/notificationController.js"
 
 const router = new Router()
 

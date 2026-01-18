@@ -1,6 +1,6 @@
 import { Router } from "express"
-import requireRole from "../middleware/requireRole.js"
-import requirePassword from "../middleware/requirePassword.js"
+import requireRole from "../../middleware/requireRole.js"
+import requirePassword from "../../middleware/requirePassword.js"
 import {
     checkCandidateExists,
     createCandidate,
@@ -9,8 +9,8 @@ import {
     getMyCandidate,
     withdrawCandidate,
     reviewCandidate
-} from "../controllers/candidateController.js"
-import upload from "../middleware/upload.js"
+} from "../../controllers/candidateController.js"
+import upload from "../../middleware/upload.js"
 
 const router = Router()
 

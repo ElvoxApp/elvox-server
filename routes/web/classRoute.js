@@ -1,5 +1,5 @@
 import express from "express"
-import { getClass, getClasses } from "../controllers/classController.js"
+import { getClass, getClasses } from "../../controllers/classController.js"
 
 const router = express.Router()
 

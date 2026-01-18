@@ -12,9 +12,9 @@ import {
     updateSupervisors,
     updateAutoPublishResults,
     generateSecretKey
-} from "../controllers/electionController.js"
-import requireRole from "../middleware/requireRole.js"
-import requirePassword from "../middleware/requirePassword.js"
+} from "../../controllers/electionController.js"
+import requireRole from "../../middleware/requireRole.js"
+import requirePassword from "../../middleware/requirePassword.js"
 
 const router = Router()
 

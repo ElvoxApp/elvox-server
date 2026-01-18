@@ -2,7 +2,7 @@ import { Router } from "express"
 import {
     getResults,
     getRandomCandidatesResults
-} from "../controllers/resultController.js"
+} from "../../controllers/resultController.js"
 
 const router = new Router()
 

@@ -1,5 +1,5 @@
 import { Router } from "express"
-import { getLogs, streamLogs } from "../controllers/logController.js"
+import { getLogs, streamLogs } from "../../controllers/logController.js"
 
 const router = new Router()
 

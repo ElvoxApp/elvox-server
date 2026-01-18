@@ -9,8 +9,8 @@ import {
     resetPassword,
     verifyMe,
     checkIfSupervisor
-} from "../controllers/authController.js"
-import authMiddleware from "../middleware/auth.js"
+} from "../../controllers/authController.js"
+import authMiddleware from "../../middleware/auth.js"
 
 const router = Router()
 

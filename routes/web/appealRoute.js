@@ -1,12 +1,12 @@
 import { Router } from "express"
-import upload from "../middleware/upload.js"
+import upload from "../../middleware/upload.js"
 import {
     createAppeal,
     getAppeal,
     getAppeals,
     updateAppealStatus
-} from "../controllers/appealController.js"
-import requireRole from "../middleware/requireRole.js"
+} from "../../controllers/appealController.js"
+import requireRole from "../../middleware/requireRole.js"
 
 const router = Router()
 

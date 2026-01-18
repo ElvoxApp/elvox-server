@@ -2,7 +2,7 @@ import { Router } from "express"
 import {
     checkStudentExists,
     getStudent
-} from "../controllers/studentController.js"
+} from "../../controllers/studentController.js"
 
 const router = Router()
 

@@ -3,9 +3,9 @@ import {
     checkUserExists,
     getUser,
     updatePassword
-} from "../controllers/userController.js"
-import authMiddleware from "../middleware/auth.js"
-import requireRole from "../middleware/requireRole.js"
+} from "../../controllers/userController.js"
+import authMiddleware from "../../middleware/auth.js"
+import requireRole from "../../middleware/requireRole.js"
 
 const router = Router()
 
