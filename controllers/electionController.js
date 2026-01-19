@@ -2,7 +2,7 @@ import * as electionService from "../services/electionService.js"
 
 export const getElection = async (req, res, next) => {
     try {
-        const elections = await electionService.getElection(req.user.role)
+        const elections = await electionService.getElection(req?.user?.role)
 
         return res.status(200).json(elections)
     } catch (err) {
@@ -43,7 +43,7 @@ export const getSupervisors = async (req, res, next) => {
 export const updateSupervisors = async (req, res, next) => {
     try {
         const data = await electionService.updateSupervisors(
-            req.user,
+            req?.user,
             req.params.id,
             req.body
         )
@@ -56,7 +56,7 @@ export const updateSupervisors = async (req, res, next) => {
 
 export const createElection = async (req, res, next) => {
     try {
-        const data = await electionService.createElection(req.user, req.body)
+        const data = await electionService.createElection(req?.user, req.body)
 
         return res.status(201).json(data)
     } catch (err) {
@@ -66,7 +66,7 @@ export const createElection = async (req, res, next) => {
 
 export const deleteElection = async (req, res, next) => {
     try {
-        await electionService.deleteElection(req.user, req.params.id)
+        await electionService.deleteElection(req?.user, req.params.id)
 
         return res.status(204).end()
     } catch (err) {
@@ -77,7 +77,7 @@ export const deleteElection = async (req, res, next) => {
 export const updateElection = async (req, res, next) => {
     try {
         const data = await electionService.updateElection(
-            req.user,
+            req?.user,
             req.params.id,
             req.body
         )
@@ -101,7 +101,7 @@ export const getReservedClasses = async (req, res, next) => {
 export const updateReservedClasses = async (req, res, next) => {
     try {
         const data = await electionService.updateReservedClasses(
-            req.user,
+            req?.user,
             req.params.id,
             req.body
         )
@@ -115,7 +115,7 @@ export const updateReservedClasses = async (req, res, next) => {
 export const updateAutoPublishResults = async (req, res, next) => {
     try {
         const data = await electionService.updateAutoPublishResults(
-            req.user,
+            req?.user,
             req.params.id,
             req.body
         )
@@ -130,7 +130,7 @@ export const updateAutoPublishResults = async (req, res, next) => {
 export const generateSecretKey = async (req, res, next) => {
     try {
         const data = await electionService.generateSecretKey(
-            req.user,
+            req?.user,
             req.params.id
         )
 

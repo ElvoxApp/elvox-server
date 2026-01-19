@@ -3,7 +3,7 @@ import * as candidateService from "../services/candidateService.js"
 export const createCandidate = async (req, res, next) => {
     try {
         const data = await candidateService.createCandidate({
-            user: req.user,
+            user: req?.user,
             body: req.body,
             files: req.files
         })
@@ -17,7 +17,7 @@ export const createCandidate = async (req, res, next) => {
 export const getMyCandidate = async (req, res, next) => {
     try {
         const data = await candidateService.getMyCandidate({
-            userId: req.user.id,
+            userId: req?.user?.id,
             electionId: req.query.election
         })
 
@@ -44,7 +44,7 @@ export const getCandidate = async (req, res, next) => {
     try {
         const data = await candidateService.getCandidate({
             id: req.params.id,
-            user: req.user
+            user: req?.user
         })
 
         res.status(200).json(data)
@@ -57,7 +57,7 @@ export const getCandidates = async (req, res, next) => {
     try {
         const data = await candidateService.getCandidates({
             query: req.query,
-            user: req.user
+            user: req?.user
         })
 
         res.status(200).json(data)
@@ -84,7 +84,7 @@ export const reviewCandidate = async (req, res, next) => {
         const data = await candidateService.reviewCandidate(
             req.params.id,
             req.body,
-            req.user
+            req?.user
         )
 
         res.status(200).json(data)

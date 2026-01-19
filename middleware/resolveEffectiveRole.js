@@ -1,11 +1,11 @@
 import pool from "../db/db.js"
 
 const resolveEffectiveRole = async (req, res, next) => {
-    if (!req.user) return next()
+    if (!req?.user) return next()
 
-    req.user.effectiveRole = req.user.role
+    req.user.effectiveRole = req?.user?.role
 
-    if (req.user.role !== "teacher") return next()
+    if (req?.user?.role !== "teacher") return next()
 
     const activeElection = await pool.query(
         `
@@ -25,7 +25,7 @@ const resolveEffectiveRole = async (req, res, next) => {
         FROM supervisors
         WHERE election_id = $1 AND user_id = $2
         `,
-        [electionId, req.user.id]
+        [electionId, req?.user?.id]
     )
 
     if (supervisorRes.rowCount > 0) {

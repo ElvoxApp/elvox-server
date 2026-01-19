@@ -84,8 +84,8 @@ export const resetPassword = async (req, res, next) => {
 export const checkIfSupervisor = async (req, res, next) => {
     try {
         const data = await authService.checkIfSupervisor(
-            req.user.id,
-            req.user.role,
+            req?.user?.id,
+            req?.user?.role,
             req.query.election
         )
         res.status(200).json(data)
@@ -95,5 +95,5 @@ export const checkIfSupervisor = async (req, res, next) => {
 }
 
 export const verifyMe = (req, res) => {
-    res.status(200).json(req.user)
+    res.status(200).json(req?.user)
 }

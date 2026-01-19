@@ -2,7 +2,7 @@ import * as notificationService from "../services/notificationService.js"
 
 export const getNotifications = async (req, res, next) => {
     try {
-        const data = await notificationService.getNotifications(req.user.id)
+        const data = await notificationService.getNotifications(req?.user?.id)
 
         return res.status(200).json(data)
     } catch (err) {
@@ -13,7 +13,7 @@ export const getNotifications = async (req, res, next) => {
 export const markNotificationRead = async (req, res, next) => {
     try {
         await notificationService.markNotificationRead({
-            userId: req.user.id,
+            userId: req?.user?.id,
             notificationId: req.params.id
         })
 

@@ -15,7 +15,7 @@ const requirePassword = async (req, res, next) => {
 
     const { rows } = await pool.query(
         "SELECT password_hash FROM users WHERE id = $1",
-        [req.user.id]
+        [req?.user?.id]
     )
 
     if (!rows.length) throw new CustomError("User not found", 404)

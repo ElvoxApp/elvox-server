@@ -8,6 +8,7 @@ import notFound from "./middleware/notFound.js"
 import authMiddleware from "./middleware/auth.js"
 import requireRole from "./middleware/requireRole.js"
 
+// WEB ROUTERS IMPORT
 import authRouter from "./routes/web/authRoute.js"
 import studentRouter from "./routes/web/studentRoute.js"
 import teacherRouter from "./routes/web/teacherRoute.js"
@@ -20,6 +21,9 @@ import appealRouter from "./routes/web/appealRoute.js"
 import resultRouter from "./routes/web/resultRoute.js"
 import voterRouter from "./routes/web/voterRoute.js"
 import logRouter from "./routes/web/logRoute.js"
+
+// DESKTOP ROUTERS IMPORT
+import desktopElectionRouter from "./routes/desktop/electionRoute.js"
 
 import "./jobs/index.js"
 
@@ -79,6 +83,7 @@ app.get("/healthz", async (req, res) => {
     }
 })
 
+// WEB ROUTES
 app.use("/auth", authRouter)
 app.use("/students", studentRouter)
 app.use("/teachers", teacherRouter)
@@ -91,6 +96,9 @@ app.use("/appeals", authMiddleware, appealRouter)
 app.use("/results", authMiddleware, resultRouter)
 app.use("/voters", authMiddleware, voterRouter)
 app.use("/elections", authMiddleware, requireRole(["admin"]), logRouter)
+
+// DESKTOP ROUTES
+app.use("/desktop/elections", desktopElectionRouter)
 
 app.use(notFound)
 app.use(errorHandler)

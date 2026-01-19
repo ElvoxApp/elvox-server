@@ -3,7 +3,7 @@ import * as appealService from "../services/appealsService.js"
 export const createAppeal = async (req, res, next) => {
     try {
         const data = await appealService.createAppeal({
-            user: req.user,
+            user: req?.user,
             body: req.body,
             files: req.files
         })
@@ -17,8 +17,8 @@ export const createAppeal = async (req, res, next) => {
 export const getAppeals = async (req, res, next) => {
     try {
         const data = await appealService.getAppeals({
-            role: req.user.role,
-            userId: req.user.id,
+            role: req?.user?.role,
+            userId: req?.user?.id,
             electionId: req.query.election
         })
 
@@ -31,8 +31,8 @@ export const getAppeals = async (req, res, next) => {
 export const getAppeal = async (req, res, next) => {
     try {
         const data = await appealService.getAppeal({
-            role: req.user.role,
-            userId: req.user.id,
+            role: req?.user?.role,
+            userId: req?.user?.id,
             appealId: req.params.id
         })
 
@@ -44,7 +44,7 @@ export const getAppeal = async (req, res, next) => {
 
 export const updateAppealStatus = async (req, res, next) => {
     try {
-        const data = await appealService.updateAppealStatus(req.user, {
+        const data = await appealService.updateAppealStatus(req?.user, {
             appealId: req.params.id,
             adminNote: req.body.adminNote,
             status: req.body.status
