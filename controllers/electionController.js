@@ -139,3 +139,17 @@ export const generateSecretKey = async (req, res, next) => {
         next(err)
     }
 }
+
+// ACTIVATE VOTING SYSTEM USING SECRET KEY
+export const activateVotingSystem = async (req, res, next) => {
+    try {
+        const data = await electionService.activateVotingSystem(
+            req.params.id,
+            req.body
+        )
+
+        return res.status(200).json(data)
+    } catch (err) {
+        next(err)
+    }
+}

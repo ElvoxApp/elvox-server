@@ -2,7 +2,8 @@ import crypto from "crypto"
 import pool from "../db/db.js"
 import CustomError from "../utils/CustomError.js"
 import { sendNotification } from "./notificationService.js"
-import hashSecretKey from "../utils/hashSecretKey.js"
+import { hashSecretKey, verifySecretKey } from "../utils/hashSecretKey.js"
+import { generateDeviceToken, hashToken } from "../utils/deviceToken.js"
 import capitalize from "../utils/capitalize.js"
 import { createLog } from "./logService.js"
 
@@ -666,7 +667,6 @@ export const updateAutoPublishResults = async (id, data) => {
     }
 }
 
-// GENERATES OR REGENERATES THE SECRET KEY
 export const generateSecretKey = async (user, id) => {
     if (!id) throw new CustomError("Election id is required", 400)
 
@@ -724,6 +724,87 @@ export const generateSecretKey = async (user, id) => {
         return { secretKey: plainKey }
     } catch (err) {
         await client.query("ROLLBACK")
+        throw err
+    } finally {
+        client.release()
+    }
+}
+
+export const activateVotingSystem = async (id, data) => {
+    if (!id) throw new CustomError("Election id is required", 400)
+    if (!data?.secretKey) throw new CustomError("Secret Key is required", 400)
+    if (!data?.deviceName) throw new CustomError("Device name is required", 400)
+    if (!data?.deviceId) throw new CustomError("Device id is required", 400)
+
+    const client = await pool.connect()
+
+    try {
+        await client.query("BEGIN")
+
+        const res = await client.query(
+            "SELECT status, name, desktop_voting_key_hash FROM elections WHERE id = $1",
+            [id]
+        )
+
+        if (res.rowCount === 0) throw new CustomError("No election found", 404)
+
+        const {
+            status: electionStatus,
+            name: electionName,
+            desktop_voting_key_hash: hashedKey
+        } = res.rows[0]
+
+        const ALLOWED = ["pre-voting", "voting"]
+
+        if (!ALLOWED.includes(electionStatus))
+            throw new CustomError(
+                "Voting system can only be activated during pre-voting and voting",
+                409
+            )
+
+        const isMatch = verifySecretKey(data?.secretKey, hashedKey)
+
+        if (!isMatch) throw new CustomError("Invalid secret key", 401)
+
+        const deviceToken = generateDeviceToken()
+        const tokenHash = hashToken(deviceToken)
+
+        await client.query(
+            `
+            INSERT INTO voting_devices
+            (election_id, device_id, device_name, auth_token_hash)
+            VALUES ($1, $2, $3, $4)
+            `,
+            [id, data?.deviceId, data?.deviceName, tokenHash]
+        )
+
+        await createLog(
+            id,
+            {
+                level: "info",
+                message: `Voting system "${data?.deviceName}" (id:${data?.deviceId}) is activated for election "${electionName}"`
+            },
+            client
+        )
+
+        await client.query("COMMIT")
+
+        return {
+            ok: true,
+            message: "System successfully activated",
+            deviceToken
+        }
+    } catch (err) {
+        await client.query("ROLLBACK")
+
+        // duplicate device activation
+        if (err.code === "23505") {
+            throw new CustomError(
+                "Voting system already activated for this election",
+                409
+            )
+        }
+
         throw err
     } finally {
         client.release()
