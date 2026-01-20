@@ -10,6 +10,16 @@ export const getNotifications = async (req, res, next) => {
     }
 }
 
+export const registerDevice = async (req, res, next) => {
+    try {
+        const data = await notificationService.registerDevice(req?.body)
+
+        return res.status(200).json(data)
+    } catch (err) {
+        next(err)
+    }
+}
+
 export const markNotificationRead = async (req, res, next) => {
     try {
         await notificationService.markNotificationRead({
