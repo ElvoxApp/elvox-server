@@ -614,7 +614,7 @@ export const updateReservedClasses = async (user, id, data) => {
     }
 }
 
-export const updateAutoPublishResults = async (id, data) => {
+export const updateAutoPublishResults = async (user, id, data) => {
     if (!id) throw new CustomError("Election id is required", 400)
 
     if (typeof data.autoPublish !== "boolean")
