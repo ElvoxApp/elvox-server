@@ -70,7 +70,7 @@ export const advanceElectionStatus = async (client, electionId) => {
 
         await sendNotification(
             userIds,
-            { message: statusMessage, type: "info" },
+            { message: statusMessage, type: "info", title: "" },
             client
         )
     }

@@ -109,7 +109,8 @@ export const updateSupervisors = async (user, electionId, payload) => {
                 removeIds,
                 {
                     message: "You have been removed from supervisors",
-                    type: "info"
+                    type: "info",
+                    title: "Removed from supervisors"
                 },
                 client
             )
@@ -134,7 +135,8 @@ export const updateSupervisors = async (user, electionId, payload) => {
                 addIds,
                 {
                     message: "You have been added as a supervisor",
-                    type: "info"
+                    type: "info",
+                    title: "Added as a supervisor"
                 },
                 client
             )
@@ -251,7 +253,8 @@ export const createElection = async (user, data) => {
             userIds,
             {
                 message: `Election "${electionName}" has been created`,
-                type: "info"
+                type: "info",
+                title: "New election"
             },
             client
         )
@@ -316,7 +319,8 @@ export const deleteElection = async (user, electionId) => {
             adminIds,
             {
                 message: `Election "${electionRes.rows[0].name}" has been deleted`,
-                type: "warning"
+                type: "warning",
+                title: "Election deleted!"
             },
             client
         )
@@ -324,7 +328,8 @@ export const deleteElection = async (user, electionId) => {
             userIds,
             {
                 message: `Election "${electionRes.rows[0].name}" has been deleted`,
-                type: "info"
+                type: "info",
+                title: "Election deleted"
             },
             client
         )
@@ -537,7 +542,8 @@ export const updateElection = async (user, electionId, data) => {
             userIds,
             {
                 message: `Election "${electionRes.rows[0].name}" has been updated`,
-                type: "info"
+                type: "info",
+                title: "Election updated"
             },
             client
         )

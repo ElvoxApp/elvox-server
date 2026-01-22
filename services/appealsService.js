@@ -98,7 +98,8 @@ export const createAppeal = async (data) => {
             adminIds,
             {
                 message: `An appeal has been submitted`,
-                type: "info"
+                type: "info",
+                title: "New Appeal!"
             },
             client
         )
@@ -248,7 +249,8 @@ export const updateAppealStatus = async (user, data) => {
             [appealRes.rows[0].user_id],
             {
                 message: `Your appeal has been ${status}`,
-                type: "info"
+                type: "info",
+                title: "Appeal submitted"
             },
             client
         )

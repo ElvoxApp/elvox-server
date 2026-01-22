@@ -152,12 +152,14 @@ export const createCandidate = async (data) => {
         const tutorNotificationOptions = {
             message:
                 "A new candidate application has been submitted and is awaiting your review",
-            type: "info"
+            type: "info",
+            title: "New candidate application"
         }
         const studentNotificationOptions = {
             message:
                 "Your candidate application has been submitted successfully and is awaiting review by your tutor",
-            type: "info"
+            type: "info",
+            title: "Application submitted"
         }
 
         await createLog(
@@ -396,12 +398,14 @@ export const withdrawCandidate = async (data) => {
         const studentNotificationOptions = {
             message:
                 "Your candidate application has been successfully withdrawn",
-            type: "success"
+            type: "success",
+            title: "Application withdrawn"
         }
         const tutorNotificationOptions = {
             message:
                 "A candidate application has been withdrawn from your class",
-            type: "info"
+            type: "info",
+            title: "Application withdrawn"
         }
 
         await createLog(
@@ -510,12 +514,14 @@ export const reviewCandidate = async (candidateId, body, user) => {
             status === "approved"
                 ? {
                       message: "Your candidate application has been approved",
-                      type: "success"
+                      type: "success",
+                      title: "Application approved"
                   }
                 : {
                       message:
                           "Your candidate application has been rejected. Please check the reason provided by your tutor",
-                      type: "error"
+                      type: "error",
+                      title: "Application rejected"
                   }
 
         await createLog(
