@@ -16,7 +16,7 @@ const authMiddleware = async (req, res, next) => {
         const hashedToken = hashToken(token)
 
         const verifyRes = await pool.query(
-            "SELECT device_id, device_name, election_id FROM voting_devices WHERE auth_token_hash = $1 AND revoked_at IS NULL",
+            "SELECT device_id, device_name, election_id, revoked_at FROM voting_devices WHERE auth_token_hash = $1",
             [hashedToken]
         )
 
@@ -26,8 +26,17 @@ const authMiddleware = async (req, res, next) => {
         const {
             device_id: deviceId,
             device_name: deviceName,
-            election_id: electionId
+            election_id: electionId,
+            revoked_at: revokedAt
         } = verifyRes.rows[0]
+
+        if (revokedAt) {
+            throw new CustomError(
+                "This voting system has been revoked by admin",
+                403,
+                "DEVICE_REVOKED"
+            )
+        }
 
         req.device = {
             deviceId,
