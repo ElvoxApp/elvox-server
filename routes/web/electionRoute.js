@@ -17,6 +17,7 @@ import {
 import { getLogs } from "../../controllers/logController.js"
 import requireRole from "../../middleware/requireRole.js"
 import requirePassword from "../../middleware/requirePassword.js"
+import resolveEffectiveRole from "../../middleware/resolveEffectiveRole.js"
 
 const router = Router()
 
@@ -54,6 +55,7 @@ router.get("/:id/logs", requireRole(["admin"]), getLogs)
 
 router.get(
     "/:id/events/stream",
+    resolveEffectiveRole,
     requireRole(["admin", "supervisor"]),
     streamEvents
 )
