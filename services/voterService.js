@@ -167,15 +167,6 @@ export const authenticateVoter = async (data) => {
             [admno, electionId]
         )
 
-        await createLog(
-            election.id,
-            {
-                level: "info",
-                message: `Voter authenticated for election "${election.name}" from voting system "${data.device.deviceName}"`
-            },
-            client
-        )
-
         await client.query("COMMIT")
 
         emitEvent(electionId, {
