@@ -37,6 +37,9 @@ export const advanceElectionStatus = async (client, electionId) => {
     // no backward / same update
     if (expectedIndex <= currentIndex) return
 
+    const isEnteringPreVoting =
+        election.status !== "pre-voting" && expectedStatus === "pre-voting"
+
     // update status
     await client.query(
         `
@@ -56,6 +59,52 @@ export const advanceElectionStatus = async (client, electionId) => {
         },
         client
     )
+
+    // INSERT BALLOT ENTRIES IF ENTERING PRE-VOTING
+    if (isEnteringPreVoting) {
+        // 1. insert candidate entries
+        await client.query(
+            `
+             INSERT INTO ballot_entries (election_id, class_id, candidate_id, is_nota)
+            SELECT
+                c.election_id,
+                c.class_id,
+                c.id,
+                false
+            FROM candidates c
+            WHERE c.election_id = $1
+            AND c.status = 'approved'
+            ON CONFLICT ON CONSTRAINT uniq_candidate_per_ballot
+            DO NOTHING
+            `,
+            [electionId]
+        )
+
+        // 2. insert NOTA per class
+        await client.query(
+            `
+            INSERT INTO ballot_entries (election_id, class_id, candidate_id, is_nota)
+            SELECT
+                $1,
+                c.id,
+                NULL,
+                true
+            FROM classes c
+            ON CONFLICT ON CONSTRAINT uniq_nota_per_ballot
+            DO NOTHING
+            `,
+            [electionId]
+        )
+
+        await createLog(
+            electionId,
+            {
+                level: "info",
+                message: `Candidate entries have been created for ${election.name}`
+            },
+            client
+        )
+    }
 
     // fetch users for user id to send notifications
     const { rows: users } = await client.query(
