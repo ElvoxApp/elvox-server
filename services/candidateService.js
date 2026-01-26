@@ -332,7 +332,7 @@ export const getCandidates = async (data) => {
         candidates = res.rows
     } else if (status === "approved") {
         const res = await pool.query(
-            "SELECT name, id, election_id, category, department, class, semester, profile_pic, status, actioned_by, updated_at FROM candidates WHERE status = $1 AND election_id IN ( SELECT id FROM elections WHERE status != 'closed')",
+            "SELECT name, id, election_id, category, department, class, semester, profile_pic, status, actioned_by, updated_at, created_at FROM candidates WHERE status = $1 AND election_id IN ( SELECT id FROM elections WHERE status != 'closed')",
             [status]
         )
 
