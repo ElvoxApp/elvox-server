@@ -70,7 +70,7 @@ export const advanceElectionStatus = async (client, electionId) => {
                 c.election_id,
                 c.class_id,
                 c.id,
-                c.category
+                c.category,
                 false
             FROM candidates c
             WHERE c.election_id = $1
