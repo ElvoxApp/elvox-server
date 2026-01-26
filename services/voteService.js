@@ -1,0 +1,136 @@
+import jwt from "jsonwebtoken"
+import CustomError from "../utils/CustomError.js"
+import pool from "../db/db.js"
+import { sendNotification } from "./notificationService.js"
+import { createLog } from "./logService.js"
+import { getElectionDetails } from "./electionService.js"
+
+export const castVote = async (electionId, data) => {
+    const { votingToken, votes } = data
+
+    if (!electionId) throw new CustomError("Election ID is required", 400)
+    if (!votingToken) throw new CustomError("Voting token is required", 400)
+    if (!votes || !votes.general || !votes.reserved)
+        throw new CustomError(
+            "Please cast both required votes before submitting",
+            400
+        )
+
+    let payload
+
+    try {
+        payload = jwt.verify(votingToken, process.env.VOTING_TOKEN_SECRET)
+    } catch (err) {
+        throw new CustomError("Invalid or expired voting token", 401)
+    }
+
+    if (
+        !payload.admno ||
+        !payload.electionId ||
+        !payload.deviceId ||
+        !payload.scope ||
+        payload.scope !== "voting"
+    )
+        throw new CustomError("Invalid voting token", 401)
+
+    if (payload.electionId !== electionId)
+        throw new CustomError("Invalid election context", 403)
+
+    const election = await getElectionDetails(electionId)
+
+    if (election.status !== "voting")
+        throw new CustomError("Voting is not allowed at this time", 403)
+
+    const client = await pool.connect()
+
+    try {
+        await client.query("BEGIN")
+
+        const hasVotedRes = await client.query(
+            "SELECT has_voted FROM voters WHERE admno = $1 AND election_id = $2 FOR UPDATE",
+            [payload.admno, electionId]
+        )
+
+        if (hasVotedRes.rowCount === 0)
+            throw new CustomError("Voter record not found", 404)
+
+        if (hasVotedRes.rows[0].has_voted)
+            throw new CustomError("You have already voted", 409)
+
+        const hasBallotEntryRes = await client.query(
+            "SELECT COUNT(*) FROM ballot_entries WHERE id = ANY($1::uuid[]) AND election_id = $2",
+            [[votes.general, votes.reserved], electionId]
+        )
+
+        const count = Number(hasBallotEntryRes.rows[0].count)
+
+        if (count !== 2) throw new CustomError("Invalid ballot entry", 400)
+
+        const insertRes = await client.query(
+            `
+            INSERT INTO votes (
+                election_id,
+                ballot_entry_id,
+                candidate_id,
+                is_nota,
+                class_id,
+                device_id
+            )
+            SELECT
+                $1 AS election_id,
+                be.id AS ballot_entry_id,
+                be.candidate_id,
+                be.is_nota,
+                be.class_id,
+                $2 AS device_id
+            FROM ballot_entries be
+            WHERE be.id = ANY($3::uuid[]);
+            `,
+            [electionId, payload.deviceId, [votes.general, votes.reserved]]
+        )
+
+        if (insertRes.rowCount !== 2)
+            throw new CustomError("Invalid ballot entry", 400)
+
+        await client.query(
+            "UPDATE voters SET has_voted = true WHERE admno = $1 AND election_id = $2",
+            [payload.admno, electionId]
+        )
+
+        const studentRes = await client.query(
+            "SELECT user_id FROM students WHERE admno = $1",
+            [payload.admno]
+        )
+
+        if (studentRes.rowCount > 0 && studentRes.rows[0].user_id) {
+            await sendNotification(
+                [studentRes.rows[0].user_id],
+                {
+                    message: `Your vote has been recorded successfully`,
+                    type: "info",
+                    title: "Vote Recorded!"
+                },
+                client
+            )
+        }
+
+        await createLog(
+            electionId,
+            {
+                level: "info",
+                message: `A vote has been recorded for "${election.name}"`
+            },
+            client
+        )
+
+        await client.query("COMMIT")
+
+        return { ok: true, message: "Vote recorded successfully" }
+    } catch (err) {
+        await client.query("ROLLBACK")
+
+        throw err
+    } finally {
+        client.release()
+    }
+}
