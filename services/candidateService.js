@@ -349,11 +349,38 @@ export const getBallotEntries = async (classId, electionId) => {
     if (!electionId) throw new CustomError("Election ID is required", 400)
 
     const res = await pool.query(
-        "SELECT be.id AS ballot_entry_id, c.id, c.name, c.profile_pic, c.class, c.semester, be.is_nota FROM ballot_entries be LEFT JOIN candidates c ON c.id = be.candidate_id WHERE be.election_id = $1 AND be.class_id = $2 ORDER BY be.is_nota ASC, c.name ASC",
+        `SELECT
+            be.id AS ballot_entry_id,
+            c.id AS candidate_id,
+            c.name,
+            c.profile_pic,
+            c.semester,
+            be.category,
+            be.is_nota,
+            cl.id AS class_id,
+            cl.name AS class
+        FROM ballot_entries be
+        LEFT JOIN candidates c ON c.id = be.candidate_id
+        JOIN classes cl ON cl.id = be.class_id
+        WHERE be.election_id = $1 AND be.class_id = $2
+        ORDER BY be.is_nota ASC, c.name ASC NULLS LAST;
+        `,
         [electionId, classId]
     )
 
-    return res.rows
+    const candidates = { general: [], reserved: [] }
+
+    if (res.rowCount === 0) return candidates
+
+    res.rows.forEach((row) => {
+        if (!candidates[row.category]) {
+            throw new CustomError(`Unknown category: ${row.category}`, 500)
+        }
+
+        candidates[row.category].push(row)
+    })
+
+    return candidates
 }
 
 export const withdrawCandidate = async (data) => {
