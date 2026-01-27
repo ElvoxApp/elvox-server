@@ -1,4 +1,4 @@
-import pool from "../db/db.js"
+import pool, { checkDb } from "../db/db.js"
 import { advanceElectionStatus } from "./advanceElectionStatus.js"
 import { sendDeadlineNotifications } from "./sendDeadlineNotifications.js"
 
@@ -6,28 +6,45 @@ let running = false
 
 const runCron = async () => {
     if (running) return
+
+    const dbReady = await checkDb()
+    if (!dbReady) {
+        console.log("DB not ready, skipping cron run")
+        return
+    }
+
     running = true
 
-    const client = await pool.connect()
+    let client
 
     try {
+        client = await pool.connect()
+
         await client.query("BEGIN")
 
-        const { rows } = await client.query(
-            `SELECT id FROM elections WHERE status != 'closed'`
+        const res = await client.query(
+            `SELECT id FROM elections WHERE status != 'closed' LIMIT 1`
         )
 
-        for (const { id } of rows) {
-            await advanceElectionStatus(client, id)
-            await sendDeadlineNotifications(id)
+        if (res.rowCount === 0) {
+            await client.query("COMMIT")
+            return
         }
 
+        const electionId = res.rows[0].id
+
+        await advanceElectionStatus(client, electionId)
+
         await client.query("COMMIT")
+
+        await sendDeadlineNotifications(electionId)
     } catch (err) {
-        await client.query("ROLLBACK")
-        console.error("Cron failed:", err)
+        if (client) {
+            await client.query("ROLLBACK")
+        }
+        console.error("Cron failed:", err.message)
     } finally {
-        client.release()
+        if (client) client.release()
         running = false
     }
 }
@@ -35,4 +52,4 @@ const runCron = async () => {
 // run every 30 seconds
 setInterval(runCron, 30000)
 
-runCron()
+setTimeout(runCron, 30000)
