@@ -14,14 +14,16 @@ export const getReults = async (electionId, queries) => {
         SELECT
             r.total_votes,
             r.result_status,
+            r.category,
+            r.is_nota,
+            r.class_id,
+            r.rank,
             c.id AS candidate_id,
             c.name,
-            c.category,
             c.class,
-            c.class_id,
             c.semester
         FROM results r
-        JOIN candidates c ON c.id = r.candidate_id
+        LEFT JOIN candidates c ON c.id = r.candidate_id
         JOIN elections e ON e.id = r.election_id
         WHERE r.election_id = $1
             AND e.result_published = TRUE
@@ -52,7 +54,7 @@ export const getReults = async (electionId, queries) => {
         values.push(yearMap[year])
     }
 
-    query += ` ORDER BY c.class_id, c.semester, r.total_votes DESC`
+    query += ` ORDER BY r.class_id, c.semester, r.total_votes DESC`
 
     const { rows } = await pool.query(query, values)
 
@@ -68,16 +70,20 @@ export const getReults = async (electionId, queries) => {
                 class: r.class,
                 semester: r.semester,
                 totalVotes: 0,
-                candidates: []
+                results: {
+                    general: [],
+                    reserved: []
+                }
             }
         }
 
-        grouped[key].candidates.push({
+        grouped[key].results[r.category].push({
             id: r.candidate_id,
-            name: r.name,
-            category: r.category,
+            name: r.is_nota ? "NOTA" : r.name,
+            isNota: r.is_nota,
             votes: r.total_votes,
             status: r.result_status.toUpperCase(),
+            rank: r.rank,
             lead: null
         })
 
@@ -86,21 +92,26 @@ export const getReults = async (electionId, queries) => {
 
     // SORT CANDIDATES AND COMPUTE LEAD
     Object.values(grouped).forEach((group) => {
-        group.candidates.sort((a, b) => b.votes - a.votes)
+        ;["general", "reserved"].forEach((category) => {
+            const arr = group.results[category]
+            if (!arr.length) return
 
-        const topVotes = group.candidates[0]?.votes ?? 0
-        const secondVotes = group.candidates[1]?.votes ?? topVotes
+            arr.sort((a, b) => b.votes - a.votes)
 
-        group.candidates.forEach((c, index) => {
-            let lead = 0
-            if (c.votes === topVotes && index === 0) {
-                // winner
-                lead = topVotes - secondVotes
-            } else {
-                // everyone else
-                lead = c.votes - topVotes
-            }
-            c.lead = lead.toString()
+            const topVotes = arr[0].votes
+            const secondVotes = arr[1]?.votes ?? topVotes
+
+            arr.forEach((c, index) => {
+                let lead = 0
+
+                if (index === 0) {
+                    lead = topVotes - secondVotes
+                } else {
+                    lead = c.votes - topVotes
+                }
+
+                c.lead = lead.toString()
+            })
         })
     })
 
@@ -122,15 +133,16 @@ export const getRandomCandidatesResults = async (limit) => {
         SELECT
             r.total_votes,
             r.result_status,
+            r.category,
             c.id AS candidate_id,
             c.name,
-            c.category,
             c.class,
             c.semester
         FROM results r
         JOIN candidates c ON c.id = r.candidate_id
         WHERE r.election_id = $1
           AND r.result_status != 'tie'
+          AND r.is_nota = FALSE
         ORDER BY RANDOM()
         LIMIT $2
     `
