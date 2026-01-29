@@ -22,8 +22,9 @@ export const getReults = async (electionId, queries) => {
             c.semester
         FROM results r
         JOIN candidates c ON c.id = r.candidate_id
+        JOIN elections e ON e.id = r.election_id
         WHERE r.election_id = $1
-          AND r.published = true
+            AND e.result_published = TRUE
     `
 
     // OPTIONAL RESULT STATUS FILTER (won / lost/ tie)
@@ -110,7 +111,7 @@ export const getRandomCandidatesResults = async (limit) => {
     const safeLimit = Math.max(1, Math.min(Number(limit) || 3, 10))
 
     const electionRes = await pool.query(
-        "SELECT id, name FROM elections WHERE status = 'post-voting' OR status = 'closed' ORDER BY election_end DESC LIMIT 1"
+        "SELECT id, name FROM elections WHERE (status = 'post-voting' OR status = 'closed') AND result_published = TRUE ORDER BY election_end DESC LIMIT 1"
     )
 
     if (electionRes.rowCount === 0) return []
@@ -129,7 +130,6 @@ export const getRandomCandidatesResults = async (limit) => {
         FROM results r
         JOIN candidates c ON c.id = r.candidate_id
         WHERE r.election_id = $1
-          AND r.published = true
           AND r.result_status != 'tie'
         ORDER BY RANDOM()
         LIMIT $2
