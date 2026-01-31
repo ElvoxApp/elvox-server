@@ -35,6 +35,9 @@ export const createCandidate = async (data) => {
             403
         )
 
+    if (data?.body?.nominee1Admno === data?.body?.nominee2Admno)
+        throw new CustomError("Nominees cannot be the same person", 403)
+
     if (!data?.files?.signature?.[0])
         throw new CustomError("Signature is required", 400)
     if (!data?.files?.nominee1Proof?.[0])
