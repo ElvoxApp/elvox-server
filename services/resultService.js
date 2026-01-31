@@ -1,5 +1,8 @@
 import CustomError from "../utils/CustomError.js"
+import capitalize from "../utils/capitalize.js"
 import pool from "../db/db.js"
+import { createLog } from "./logService.js"
+import { sendNotification } from "./notificationService.js"
 
 export const getReults = async (electionId, queries) => {
     if (!electionId) throw new CustomError("Election id is required", 400)
@@ -159,5 +162,85 @@ export const getRandomCandidatesResults = async (limit) => {
     return {
         election: { id: electionId, name: electionName },
         results: res.rows
+    }
+}
+
+export const publishResults = async (electionId, user) => {
+    if (!electionId) throw new CustomError("Election id is required")
+
+    const client = await pool.connect()
+
+    try {
+        await client.query("BEGIN")
+
+        const electionRes = await client.query(
+            "SELECT status, name, auto_publish_results, result_published FROM elections WHERE id = $1 FOR UPDATE",
+            [electionId]
+        )
+
+        if (electionRes.rowCount === 0)
+            throw new CustomError("Invalid election id", 400)
+
+        const {
+            status,
+            auto_publish_results: autoPublishResults,
+            result_published: resultPublished
+        } = electionRes.rows[0]
+
+        if (resultPublished)
+            throw new CustomError(
+                "Results already published for this election",
+                409
+            )
+
+        if (autoPublishResults)
+            throw new CustomError(
+                "Results cannot be published manually for this election",
+                409
+            )
+
+        if (status !== "post-voting")
+            throw new CustomError(
+                "Results can only be published during post-voting state",
+                409
+            )
+
+        await client.query(
+            "UPDATE elections SET result_published = TRUE WHERE id = $1",
+            [electionId]
+        )
+
+        await createLog(
+            electionId,
+            {
+                level: "info",
+                message: `Results published for election "${electionRes.rows[0].name}" by ${capitalize(user?.role)} ${user?.name} (id: ${user?.id})`
+            },
+            client
+        )
+
+        const userIdRes = await client.query("SELECT id FROM users")
+
+        const userIds = userIdRes.rows.map((row) => row.id)
+
+        await sendNotification(
+            userIds,
+            {
+                message: `Results published for election "${electionRes.rows[0].name}"`,
+                type: "info",
+                title: "Results Published!"
+            },
+            client
+        )
+
+        await client.query("COMMIT")
+
+        return { ok: true, message: "Results published successfully" }
+    } catch (err) {
+        await client.query("ROLLBACK")
+
+        throw err
+    } finally {
+        client.release()
     }
 }

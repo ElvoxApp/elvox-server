@@ -15,6 +15,7 @@ import {
     streamEvents
 } from "../../controllers/electionController.js"
 import { getLogs } from "../../controllers/logController.js"
+import { publishResults } from "../../controllers/resultController.js"
 import requireRole from "../../middleware/requireRole.js"
 import requirePassword from "../../middleware/requirePassword.js"
 import resolveEffectiveRole from "../../middleware/resolveEffectiveRole.js"
@@ -48,6 +49,8 @@ router.patch(
     requireRole(["admin"]),
     updateAutoPublishResults
 )
+
+router.patch("/:id/publish-result", requireRole(["admin"]), publishResults)
 
 router.post("/:id/secret-key", requireRole(["admin"]), generateSecretKey)
 
