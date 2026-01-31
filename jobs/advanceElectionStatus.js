@@ -1,6 +1,7 @@
 import { getExpectedStatus, STATUS_ORDER } from "../utils/electionStatus.js"
 import { sendNotification } from "../services/notificationService.js"
 import { createLog } from "../services/logService.js"
+import { countVotes } from "../services/voteService.js"
 
 const STATUS_MESSAGES = {
     nominations: "Nominations are now open",
@@ -39,6 +40,9 @@ export const advanceElectionStatus = async (client, electionId) => {
 
     const isEnteringPreVoting =
         election.status !== "pre-voting" && expectedStatus === "pre-voting"
+
+    const isEnteringPostVoting =
+        election.status !== "post-voting" && expectedStatus === "post-voting"
 
     // update status
     await client.query(
@@ -103,10 +107,14 @@ export const advanceElectionStatus = async (client, electionId) => {
             electionId,
             {
                 level: "info",
-                message: `Candidate entries have been created for ${election.name}`
+                message: `Candidate entries have been created for election "${election.name}" by system`
             },
             client
         )
+    }
+
+    if (isEnteringPostVoting) {
+        await countVotes(electionId, client)
     }
 
     // fetch users for user id to send notifications

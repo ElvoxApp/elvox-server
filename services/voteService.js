@@ -134,3 +134,159 @@ export const castVote = async (electionId, data) => {
         client.release()
     }
 }
+
+export const countVotes = async (electionId, client = null) => {
+    if (!electionId) throw new Error("Election id is required")
+    if (
+        !client ||
+        typeof client.query !== "function" ||
+        typeof client.release !== "function"
+    ) {
+        throw new Error("Invalid DB client")
+    }
+
+    const electionRes = await client.query(
+        "SELECT status, name, auto_publish_results, result_published FROM elections WHERE id = $1",
+        [electionId]
+    )
+
+    if (electionRes.rowCount === 0) throw new Error("Invalid election id")
+
+    if (electionRes.rows[0].result_published)
+        throw new Error("Results already published for this election")
+
+    if (electionRes.rows[0].status !== "post-voting")
+        throw new Error("Votes can only be counted on post-voting state")
+
+    // Aggregate votes per (class, category, candidate, NOTA) by joining votes with ballot entries
+    // Upsert totals into results so recounts are safe; default status = 'lost'
+    await client.query(
+        `
+        INSERT INTO results (
+            election_id,
+            class_id,
+            category,
+            candidate_id,
+            is_nota,
+            total_votes,
+            result_status
+        )
+        SELECT
+            b.election_id,
+            b.class_id,
+            b.category,
+            b.candidate_id,
+            b.is_nota,
+            COUNT(v.id) AS total_votes,
+            'lost' AS result_status
+        FROM ballot_entries b
+        LEFT JOIN votes v
+            ON v.ballot_entry_id = b.id
+            AND v.election_id = $1
+        WHERE b.election_id = $1
+        GROUP BY
+            b.election_id,
+            b.class_id,
+            b.category,
+            b.candidate_id,
+            b.is_nota
+        ON CONFLICT (election_id, class_id, category, candidate_id, is_nota)
+        DO UPDATE SET
+            total_votes = EXCLUDED.total_votes,
+            result_status = EXCLUDED.result_status
+        `,
+        [electionId]
+    )
+
+    // Compute rank per (election, class, category) based on total_votes
+    // Uses RANK() so equal votes share the same rank (ties allowed)
+    await client.query(
+        `
+        WITH ranked AS (
+            SELECT
+                id,
+                RANK() OVER (
+                    PARTITION BY election_id, class_id, category
+                    ORDER BY total_votes DESC
+                ) AS computed_rank
+            FROM results
+            WHERE election_id = $1
+        )
+        UPDATE results r
+        SET rank = ranked.computed_rank
+        FROM ranked
+        WHERE r.id = ranked.id
+    `,
+        [electionId]
+    )
+
+    // Set result_status based on rank:
+    // rank 1 → WON or TIE (if multiple), others → LOST
+    await client.query(
+        `
+        WITH first_rank AS (
+            SELECT
+                election_id,
+                class_id,
+                category,
+                COUNT(*) AS first_count
+            FROM results
+            WHERE election_id = $1 AND rank = 1
+            GROUP BY election_id, class_id, category
+        )
+        UPDATE results r
+        SET result_status =
+            CASE
+                WHEN r.rank = 1 AND fr.first_count = 1 THEN 'won'
+                WHEN r.rank = 1 AND fr.first_count > 1 THEN 'tie'
+                ELSE 'lost'
+            END
+        FROM first_rank fr
+        WHERE r.election_id = fr.election_id
+        AND r.class_id = fr.class_id
+        AND r.category = fr.category
+        AND r.election_id = $1
+    `,
+        [electionId]
+    )
+
+    await createLog(
+        electionId,
+        {
+            level: "info",
+            message: `Vote counting completed for election "${electionRes.rows[0].name}" by system`
+        },
+        client
+    )
+
+    // Auto-publish results if enabled
+    if (electionRes.rows[0].auto_publish_results) {
+        await client.query(
+            "UPDATE elections SET result_published = TRUE WHERE id = $1",
+            [electionId]
+        )
+
+        await createLog(
+            electionId,
+            {
+                level: "info",
+                message: `Results published for election "${electionRes.rows[0].name}" by system`
+            },
+            client
+        )
+
+        const userIdRes = await client.query("SELECT id FROM users")
+
+        const userIds = userIdRes.rows.map((row) => row.id)
+
+        await sendNotification(
+            userIds,
+            {
+                message: `Results published for election "${electionRes.rows[0].name}"`,
+                type: "info",
+                title: "Results Published!"
+            },
+            client
+        )
+    }
+}
